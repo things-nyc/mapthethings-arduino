@@ -29,6 +29,8 @@
 
 #include "BluefruitConfig.h"
 
+#include "Bluetooth.h"
+
 // Create the bluefruit object, either software serial...uncomment these lines
 /*
 SoftwareSerial bluefruitSS = SoftwareSerial(BLUEFRUIT_SWUART_TXD_PIN, BLUEFRUIT_SWUART_RXD_PIN);
@@ -66,14 +68,10 @@ int32_t hrmLocationCharId;
             automatically on startup)
 */
 /**************************************************************************/
-void setup(void)
+void setupBluetooth(void)
 {
-  while (!Serial); // required for Flora & Micro
-  delay(500);
-
   boolean success;
 
-  Serial.begin(115200);
   Serial.println(F("Adafruit Bluefruit Heart Rate Monitor (HRM) Example"));
   Serial.println(F("---------------------------------------------------"));
 
@@ -147,9 +145,7 @@ void setup(void)
   Serial.println();
 }
 
-/** Send randomized heart rate data continuously **/
-void loop(void)
-{
+void sendHeartrate(void) {
   int heart_rate = random(50, 100);
 
   Serial.print(F("Updating HRM value to "));
@@ -168,7 +164,16 @@ void loop(void)
   {
     Serial.println(F("Failed to get response!"));
   }
+}
 
-  /* Delay before next measurement update */
-  delay(1000);
+unsigned long previousMillis = 0;
+const long bluetoothInterval = 1000;
+
+/** Send randomized heart rate data every 1000ms **/
+void loopBluetooth(void) {
+    unsigned long currentMillis = millis();
+
+    if (currentMillis - previousMillis >= bluetoothInterval) {
+        sendHeartrate();
+    }
 }
