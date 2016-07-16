@@ -9,20 +9,71 @@
  *
  *******************************************************************************/
 
-
 #include "Lora.h"
 #include "Bluetooth.h"
+
+void sendCommandCallback(uint8_t data[], uint16_t len) {
+  Serial.println("sendCommand");
+  uint16_t command = *(uint16_t *)data;
+  Serial.println(command);
+}
+
+void sendPacketCallback(uint8_t data[], uint16_t len) {
+  Serial.println("sendPacket");
+}
+
+void assignDevAddrCallback(uint8_t data[], uint16_t len) {
+  Serial.println("assignDevAddr");
+}
+
+void assignNwkSKeyCallback(uint8_t data[], uint16_t len) {
+  Serial.println("assignNwkSKey");
+}
+
+void assignAppSKeyCallback(uint8_t data[], uint16_t len) {
+  Serial.println("assignAppSKey");
+}
+
+CharacteristicConfigType charConfigs[] = {
+{
+  UNINITIALIZED,
+  // 0x08 write only, datatype 3 is int
+  "AT+GATTADDCHAR=UUID=0x2AD0,PROPERTIES=0x08,MIN_LEN=2,MAX_LEN=2,DATATYPE=3,DESCRIPTION=Command",
+  sendCommandCallback
+},
+{
+  UNINITIALIZED,
+  "AT+GATTADDCHAR=UUID=0x2AD1,PROPERTIES=0x08,MIN_LEN=1,MAX_LEN=20,DATATYPE=2,DESCRIPTION=Send packet",
+  sendPacketCallback
+},
+{
+  UNINITIALIZED,
+  // 0x0A read/write, datatype 2 is byte array
+  "AT+GATTADDCHAR=UUID=0x2AD2,PROPERTIES=0x0A,MIN_LEN=4,MAX_LEN=4,DATATYPE=2,DESCRIPTION=DevAddr",
+  assignDevAddrCallback
+},
+{
+  UNINITIALIZED,
+  "AT+GATTADDCHAR=UUID=0x2AD3,PROPERTIES=0x0A,MIN_LEN=16,MAX_LEN=16,DATATYPE=2,DESCRIPTION=NwkSKey",
+  assignNwkSKeyCallback
+},
+{
+  UNINITIALIZED,
+  "AT+GATTADDCHAR=UUID=0x2AD4,PROPERTIES=0x0A,MIN_LEN=16,MAX_LEN=16,DATATYPE=2,DESCRIPTION=AppSKey",
+  assignAppSKeyCallback
+},
+};
 
 void setup() {
     Serial.begin(115200);
     Serial.println(F("Starting"));
     digitalWrite(LED_BUILTIN, LOW); // off
 
-    setupBluetooth();
+    setupBluetooth(charConfigs, COUNT(charConfigs));
     setupLora();
 }
 
 void loop() {
-    loopLora();
     loopBluetooth();
+    loopLora();
 }

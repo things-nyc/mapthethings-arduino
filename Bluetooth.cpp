@@ -2,6 +2,7 @@
  Bluetooth operation code for MapTheThings.
  Presents LoRa service
  - SendPacket
+ - Get Status
  - Get/Set DevAddr
  - Get/Set AppEUI
  - Get/Set NwkSKey
@@ -27,10 +28,13 @@
     required with UART to slow down data sent to the Bluefruit LE!
 */
 
+#define MAPTHETHINGS_SOFTWARE_VERSION "0.1.0"
+
 #define MINIMUM_FIRMWARE_VERSION   "0.7.0" // Callback requires 0.7.0
 #define MODE_LED_BEHAVIOUR          "MODE" // "SPI"
 
 #include <Arduino.h>
+#include <avr/pgmspace.h>
 #include <SPI.h>
 #if not defined (_VARIANT_ARDUINO_DUE_X_) && not defined (_VARIANT_ARDUINO_ZERO_)
   #include <SoftwareSerial.h>
@@ -64,12 +68,22 @@ Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_
 //                             BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 
 
+static CharacteristicConfigType *charConfigs;
+int32_t charConfigsCount;
+
 void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
   Serial.println("gattCallback");
   Serial.println(index);
-  for(int i=0; i<len; ++i) {
-    Serial.println(data[i], HEX);
+  for (int i=0; i<charConfigsCount; ++i) {
+    if (index==charConfigs[i].charId) {
+      for(int i=0; i<len; ++i) {
+        Serial.println(data[i], HEX);
+      }
+      charConfigs[i].callback(data, len);
+      return;
+    }
   }
+  Serial.println("Failed to find callback");
 }
 
 // A small helper
@@ -93,8 +107,11 @@ int32_t deviceInfoCharId;
             automatically on startup)
 */
 /**************************************************************************/
-void setupBluetooth(void)
+void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
 {
+  charConfigs = cconfigs;
+  charConfigsCount = cccount;
+  
   boolean success;
 
   Serial.println(F("Adafruit Bluefruit Heart Rate Monitor (HRM) Example"));
@@ -151,10 +168,13 @@ void setupBluetooth(void)
 
   /* Add the LoRa write characteristic */
   /* Chars ID for Measurement should be 1 */
-  Serial.println(F("Adding the LoRa write characteristic (UUID = 0x2AD0): "));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2AD0,PROPERTIES=0x08,MIN_LEN=1,MAX_LEN=20,DATATYPE=2,DESCRIPTION=Send-packet-to-lora"), &loraSendCharId);
-  if (! success) {
-    error(F("Could not add LoRa write characteristic"));
+  for (int i=0; i<cccount; ++i) {
+    Serial.print(F("Adding characteristic: "));
+    Serial.println(cconfigs[i].charDef);
+    success = ble.sendCommandWithIntReply(cconfigs[i].charDef, &cconfigs[i].charId);
+    if (! success) {
+      error(F("Could not add characteristic"));
+    }
   }
 
   Serial.println(F("Adding the Device Info service definition (UUID = 0x180A): "));
@@ -167,7 +187,12 @@ void setupBluetooth(void)
   if (! success) {
     error(F("Could not add LoRa write characteristic"));
   }
-
+  Serial.println(F("Adding the Device Info software version characteristic (UUID = 0x2A28): "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A28,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=" MAPTHETHINGS_SOFTWARE_VERSION), &deviceInfoCharId);
+  if (! success) {
+    error(F("Could not add Device Info software version characteristic"));
+  }
+  
   /* Add the Heart Rate Service to the advertising data (needed for Nordic apps to detect the service) */
   Serial.print(F("Adding LoRa and Device info UUIDs to the advertising payload: "));
   // 02-01-06 - len-flagtype-flags
@@ -180,14 +205,16 @@ void setupBluetooth(void)
   //    4 Simultaneous LE and BR/EDR (Host)
   ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-05-02-0A-18-30-18") );
 
-  Serial.println(F("Signing up for callback on characteristic write: "));
-  Serial.println(loraSendCharId);
-  ble.setBleGattRxCallback(loraSendCharId, gattCallback);
-  
   /* Reset the device for the new service setting changes to take effect */
   Serial.print(F("Performing a SW reset (service changes require a reset): "));
   ble.reset();
 
+  Serial.println(F("Signing up for callbacks on characteristic write: "));
+  for (int i=0; i<cccount; ++i) {
+    Serial.println(cconfigs[i].charId);
+    ble.setBleGattRxCallback(cconfigs[i].charId, gattCallback);
+  }
+  
   ble.verbose(false);
   Serial.println();
 }
