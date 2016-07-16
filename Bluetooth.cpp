@@ -1,5 +1,15 @@
 /*********************************************************************
- This is an example for our nRF51822 based Bluefruit LE modules
+ Bluetooth operation code for MapTheThings.
+ Presents LoRa service
+ - SendPacket
+ - Get/Set DevAddr
+ - Get/Set AppEUI
+ - Get/Set NwkSKey
+ - Get/Set AppSKey
+ - Get/Set DevEUI
+ - RequestJoin
+ 
+ Adapted from an example for the nRF51822 based Bluefruit LE modules
 
  Pick one up today in the adafruit shop!
 
@@ -16,6 +26,9 @@
     Please note the long strings of data sent mean the *RTS* pin is
     required with UART to slow down data sent to the Bluefruit LE!
 */
+
+#define MINIMUM_FIRMWARE_VERSION   "0.7.0" // Callback requires 0.7.0
+#define MODE_LED_BEHAVIOUR          "MODE" // "SPI"
 
 #include <Arduino.h>
 #include <SPI.h>
@@ -51,6 +64,14 @@ Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_
 //                             BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 
 
+void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
+  Serial.println("gattCallback");
+  Serial.println(index);
+  for(int i=0; i<len; ++i) {
+    Serial.println(data[i], HEX);
+  }
+}
+
 // A small helper
 void error(const __FlashStringHelper*err) {
   Serial.println(err);
@@ -59,9 +80,13 @@ void error(const __FlashStringHelper*err) {
 
 /* The service information */
 
-int32_t hrmServiceId;
-int32_t hrmMeasureCharId;
-int32_t hrmLocationCharId;
+int32_t loraServiceId;
+int32_t loraSendCharId;
+//int32_t loraSendCharId;
+
+int32_t deviceInfoServiceId;
+int32_t deviceInfoCharId;
+
 /**************************************************************************/
 /*!
     @brief  Sets up the HW an the BLE module (this function is called
@@ -74,8 +99,6 @@ void setupBluetooth(void)
 
   Serial.println(F("Adafruit Bluefruit Heart Rate Monitor (HRM) Example"));
   Serial.println(F("---------------------------------------------------"));
-
-  randomSeed(micros());
 
   /* Initialise the module */
   Serial.print(F("Initialising the Bluefruit LE module: "));
@@ -104,76 +127,100 @@ void setupBluetooth(void)
   // ble.setInterCharWriteDelay(5); // 5 ms
 
   /* Change the device name to make it easier to find */
-  Serial.println(F("Setting device name to 'Bluefruit HRM': "));
+  Serial.println(F("Setting device name to 'MapTheThings': "));
 
-  if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=Bluefruit HRM")) ) {
+  if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=MapTheThings")) ) {
     error(F("Could not set device name?"));
   }
 
-  /* Add the Heart Rate Service definition */
+  // LED Activity command is only supported from 0.6.6
+  if ( ble.isVersionAtLeast(MINIMUM_FIRMWARE_VERSION) )
+  {
+    // Change Mode LED Activity
+    Serial.println(F("Change LED activity to " MODE_LED_BEHAVIOUR));
+    ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
+  }
+
+  /* Add the LoRa Service definition */
   /* Service ID should be 1 */
-  Serial.println(F("Adding the Heart Rate Service definition (UUID = 0x180D): "));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180D"), &hrmServiceId);
+  Serial.println(F("Adding the LoRa Service definition (UUID = 0x1830): "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1830"), &loraServiceId);
   if (! success) {
     error(F("Could not add HRM service"));
   }
 
-  /* Add the Heart Rate Measurement characteristic */
+  /* Add the LoRa write characteristic */
   /* Chars ID for Measurement should be 1 */
-  Serial.println(F("Adding the Heart Rate Measurement characteristic (UUID = 0x2A37): "));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A37, PROPERTIES=0x10, MIN_LEN=2, MAX_LEN=3, VALUE=00-40"), &hrmMeasureCharId);
-    if (! success) {
-    error(F("Could not add HRM characteristic"));
+  Serial.println(F("Adding the LoRa write characteristic (UUID = 0x2AD0): "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2AD0,PROPERTIES=0x08,MIN_LEN=1,MAX_LEN=20,DATATYPE=2,DESCRIPTION=Send-packet-to-lora"), &loraSendCharId);
+  if (! success) {
+    error(F("Could not add LoRa write characteristic"));
   }
 
-  /* Add the Body Sensor Location characteristic */
-  /* Chars ID for Body should be 2 */
-  Serial.println(F("Adding the Body Sensor Location characteristic (UUID = 0x2A38): "));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A38, PROPERTIES=0x02, MIN_LEN=1, VALUE=3"), &hrmLocationCharId);
-    if (! success) {
-    error(F("Could not add BSL characteristic"));
+  Serial.println(F("Adding the Device Info service definition (UUID = 0x180A): "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180A"), &deviceInfoServiceId);
+  if (! success) {
+    error(F("Could not add Device Info service"));
+  }
+  Serial.println(F("Adding the Device Info manufacturer name characteristic (UUID = 0x2A29): "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A29,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=TheThingsNYC"), &deviceInfoCharId);
+  if (! success) {
+    error(F("Could not add LoRa write characteristic"));
   }
 
   /* Add the Heart Rate Service to the advertising data (needed for Nordic apps to detect the service) */
-  Serial.print(F("Adding Heart Rate Service UUID to the advertising payload: "));
-  ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-05-02-0d-18-0a-18") );
+  Serial.print(F("Adding LoRa and Device info UUIDs to the advertising payload: "));
+  // 02-01-06 - len-flagtype-flags
+  // 05-02 - len-16bitlisttype- 0x180A(Device) - 0x180D(Heart Rate)
+  //   bit
+  //    0 LE Limited Discoverable Mode - 180sec advertising
+  //    1 LE General Discoverable Mode - Indefinite advertising time
+  //    2 BR/EDR Not Supported
+  //    3 Simultaneous LE and BR/EDR (Controller)
+  //    4 Simultaneous LE and BR/EDR (Host)
+  ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-05-02-0A-18-30-18") );
 
+  Serial.println(F("Signing up for callback on characteristic write: "));
+  Serial.println(loraSendCharId);
+  ble.setBleGattRxCallback(loraSendCharId, gattCallback);
+  
   /* Reset the device for the new service setting changes to take effect */
   Serial.print(F("Performing a SW reset (service changes require a reset): "));
   ble.reset();
 
+  ble.verbose(false);
   Serial.println();
 }
 
 void sendHeartrate(void) {
   int heart_rate = random(50, 100);
 
-  Serial.print(F("Updating HRM value to "));
-  Serial.print(heart_rate);
-  Serial.println(F(" BPM"));
+//  Serial.print(F("Updating HRM value to "));
+//  Serial.print(heart_rate);
+//  Serial.println(F(" BPM"));
 
   /* Command is sent when \n (\r) or println is called */
   /* AT+GATTCHAR=CharacteristicID,value */
-  ble.print( F("AT+GATTCHAR=") );
-  ble.print( hrmMeasureCharId );
-  ble.print( F(",00-") );
-  ble.println(heart_rate, HEX);
+//  ble.print( F("AT+GATTCHAR=") );
+//  ble.print( hrmMeasureCharId );
+//  ble.print( F(",00-") );
+//  ble.println(heart_rate, HEX);
 
   /* Check if command executed OK */
-  if ( !ble.waitForOK() )
-  {
-    Serial.println(F("Failed to get response!"));
-  }
+//  if ( !ble.waitForOK() )
+//  {
+//    Serial.println(F("Failed to get response!"));
+//  }
 }
 
-unsigned long previousMillis = 0;
-const long bluetoothInterval = 1000;
+const long updateInterval = 1000;
+TimeoutTimer timer;
 
-/** Send randomized heart rate data every 1000ms **/
+/** Send randomized heart rate data every bluetoothInterval **/
 void loopBluetooth(void) {
-    unsigned long currentMillis = millis();
-
-    if (currentMillis - previousMillis >= bluetoothInterval) {
+    ble.update(500);
+    if (timer.expired()) {
+        timer.set(updateInterval);
         sendHeartrate();
     }
 }
