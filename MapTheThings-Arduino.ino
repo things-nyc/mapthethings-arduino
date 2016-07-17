@@ -71,6 +71,11 @@ void setup() {
 
     setupBluetooth(charConfigs, COUNT(charConfigs));
     setupLora();
+
+    uint32_t dev = __builtin_bswap32(DEVADDR);
+    setBluetoothCharData(charConfigs[2].charId, (const uint8_t*)&dev, 4);
+    setBluetoothCharData(charConfigs[3].charId, NWKSKEY, 16);
+    setBluetoothCharData(charConfigs[4].charId, APPSKEY, 16);
 }
 
 void loop() {

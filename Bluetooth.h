@@ -11,4 +11,5 @@ typedef struct {
 
 void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount);
 void loopBluetooth(void);
+void setBluetoothCharData(uint8_t charID, uint8_t const data[], uint8_t size);
 

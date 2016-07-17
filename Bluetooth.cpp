@@ -42,7 +42,8 @@
 
 #include "Adafruit_BLE.h"
 #include "Adafruit_BluefruitLE_SPI.h"
-#include "Adafruit_BluefruitLE_UART.h"
+//#include "Adafruit_BluefruitLE_UART.h"
+#include "Adafruit_BLEGatt.h"
 
 #include "BluefruitConfig.h"
 
@@ -67,9 +68,14 @@ Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_
 //                             BLUEFRUIT_SPI_MOSI, BLUEFRUIT_SPI_CS,
 //                             BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 
+Adafruit_BLEGatt gatt(ble);
 
 static CharacteristicConfigType *charConfigs;
 int32_t charConfigsCount;
+
+void setBluetoothCharData(uint8_t charID, uint8_t const data[], uint8_t size) {
+  gatt.setChar(charID, data, size);
+}
 
 void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
   Serial.println("gattCallback");
