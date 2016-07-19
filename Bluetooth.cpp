@@ -31,7 +31,7 @@
 #define MAPTHETHINGS_SOFTWARE_VERSION "0.1.0"
 
 #define MINIMUM_FIRMWARE_VERSION   "0.7.0" // Callback requires 0.7.0
-#define MODE_LED_BEHAVIOUR          "MODE" // "SPI"
+#define MODE_LED_BEHAVIOUR          "SPI" // "MODE" // "SPI"
 
 #include <Arduino.h>
 #include <avr/pgmspace.h>
@@ -68,23 +68,27 @@ Adafruit_BluefruitLE_SPI ble(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_
 //                             BLUEFRUIT_SPI_MOSI, BLUEFRUIT_SPI_CS,
 //                             BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 
+void bluetoothDisconnect() {
+  ble.disconnect();
+}
+
 Adafruit_BLEGatt gatt(ble);
 
 static CharacteristicConfigType *charConfigs;
-int32_t charConfigsCount;
+static int32_t charConfigsCount;
 
 void setBluetoothCharData(uint8_t charID, uint8_t const data[], uint8_t size) {
   gatt.setChar(charID, data, size);
 }
 
 void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
-  Serial.println("gattCallback");
-  Serial.println(index);
+//  Serial.println("gattCallback");
+//  Serial.println(index);
   for (int i=0; i<charConfigsCount; ++i) {
     if (index==charConfigs[i].charId) {
-      for(int i=0; i<len; ++i) {
-        Serial.println(data[i], HEX);
-      }
+//      for(int i=0; i<len; ++i) {
+//        Serial.print(data[i], HEX);
+//      }
       charConfigs[i].callback(data, len);
       return;
     }
@@ -102,7 +106,6 @@ void error(const __FlashStringHelper*err) {
 
 int32_t loraServiceId;
 int32_t loraSendCharId;
-//int32_t loraSendCharId;
 
 int32_t deviceInfoServiceId;
 int32_t deviceInfoCharId;
@@ -126,7 +129,7 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   /* Initialise the module */
   Serial.print(F("Initialising the Bluefruit LE module: "));
 
-  if ( !ble.begin(VERBOSE_MODE) )
+  if ( !ble.begin(!VERBOSE_MODE) )
   {
     error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
   }
@@ -251,7 +254,7 @@ TimeoutTimer timer;
 
 /** Send randomized heart rate data every bluetoothInterval **/
 void loopBluetooth(void) {
-    ble.update(500);
+    ble.update(200);
     if (timer.expired()) {
         timer.set(updateInterval);
         sendHeartrate();

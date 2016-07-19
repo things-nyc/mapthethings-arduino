@@ -12,7 +12,6 @@
 #include "Lora.h"
 #include "Bluetooth.h"
 
-
 extern "C"{
   void debugLog(char *msg, uint16_t value);
 }
@@ -22,10 +21,17 @@ void debugLog(char *msg, uint16_t value) {
   Serial.println(value, HEX);
 }
 
+#define CMD_DISCONNECT 1
+
 void sendCommandCallback(uint8_t data[], uint16_t len) {
-  Serial.println("sendCommand");
   uint16_t command = *(uint16_t *)data;
+  Serial.print("sendCommand: ");
   Serial.println(command);
+  switch (command) {
+    case CMD_DISCONNECT:
+      bluetoothDisconnect();
+      break;
+  }
 }
 
 void sendPacketCallback(uint8_t data[], uint16_t len) {
