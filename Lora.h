@@ -6,4 +6,5 @@ extern const u4_t DEVADDR;
 
 void setupLora(void);
 void loopLora(void);
+bool loraSendBytes(uint8_t *data, uint16_t len);
 

@@ -12,6 +12,16 @@
 #include "Lora.h"
 #include "Bluetooth.h"
 
+
+extern "C"{
+  void debugLog(char *msg, uint16_t value);
+}
+
+void debugLog(char *msg, uint16_t value) {
+  Serial.println(msg);
+  Serial.println(value, HEX);
+}
+
 void sendCommandCallback(uint8_t data[], uint16_t len) {
   Serial.println("sendCommand");
   uint16_t command = *(uint16_t *)data;
@@ -19,7 +29,12 @@ void sendCommandCallback(uint8_t data[], uint16_t len) {
 }
 
 void sendPacketCallback(uint8_t data[], uint16_t len) {
-  Serial.println("sendPacket");
+  Serial.print("sendPacket: ");
+  for(int i=0; i<len; ++i) {
+    Serial.print(data[i], HEX);
+  }
+  Serial.println("");
+  loraSendBytes(data, len);
 }
 
 void assignDevAddrCallback(uint8_t data[], uint16_t len) {

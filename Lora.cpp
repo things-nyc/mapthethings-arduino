@@ -46,32 +46,38 @@ void os_getArtEui (u1_t* buf) { }
 void os_getDevEui (u1_t* buf) { }
 void os_getDevKey (u1_t* buf) { }
 
-static uint8_t mydata[] = "GAAA";
-static osjob_t sendjob;
-
-// Schedule TX every this many seconds (might become longer due to duty
-// cycle limitations).
-const unsigned TX_INTERVAL = 10;
-
 // Pin mapping
 const lmic_pinmap lmic_pins = {
     .nss = 18, // 6,
     .rxtx = LMIC_UNUSED_PIN,
     .rst = 19, // 5,
-    .dio = {17, 5, 6},
+    .dio = {16, 5, 6}, // Moved dio0 from 17 because of overlapping ExtInt4 (pin6)
 };
 
-void do_send(osjob_t* j) {
-    // Check if there is not a current TX/RX job running
+static osjob_t timeoutjob;
+static void txtimeout_func(osjob_t *job) {
+  digitalWrite(LED_BUILTIN, LOW); // off
+  Serial.println(F("Transmit Timeout"));
+  //txActive = false;
+  LMIC_clrTxData ();
+}
+
+bool loraSendBytes(uint8_t *data, uint16_t len) {
+  ostime_t t = os_getTime();
+  //os_setTimedCallback(&txjob, t + ms2osticks(100), tx_func);
+  // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
         Serial.println(F("OP_TXRXPEND, not sending"));
+        return false; // Did not enqueue
     } else {
         // Prepare upstream data transmission at the next possible time.
-        LMIC_setTxData2(1, mydata, sizeof(mydata)-1, 0);
         Serial.println(F("Packet queued"));
         digitalWrite(LED_BUILTIN, HIGH); // off
+        LMIC_setTxData2(1, data, len, 0);
     }
-    // Next TX is scheduled after TX_COMPLETE event.
+  // Timeout TX after 20 seconds
+  os_setTimedCallback(&timeoutjob, t + ms2osticks(20000), txtimeout_func);
+  return true;
 }
 
 void onEvent (ev_t ev) {
@@ -107,6 +113,7 @@ void onEvent (ev_t ev) {
             break;
             break;
         case EV_TXCOMPLETE:
+            os_clearCallback(&timeoutjob);
             Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
             digitalWrite(LED_BUILTIN, LOW); // off
 
@@ -116,8 +123,6 @@ void onEvent (ev_t ev) {
                 Serial.write(LMIC.frame+LMIC.dataBeg, LMIC.dataLen);
                 Serial.println();
             }
-            // Schedule next transmission
-            os_setTimedCallback(&sendjob, os_getTime()+sec2osticks(TX_INTERVAL), do_send);
             break;
         case EV_LOST_TSYNC:
             Serial.println(F("EV_LOST_TSYNC"));
@@ -207,9 +212,6 @@ void setupLora() {
 
     // Set data rate and transmit power (note: txpow seems to be ignored by the library)
     LMIC_setDrTxpow(DR_SF7,20);
-
-    // Start job
-    do_send(&sendjob);
 }
 
 void loopLora() {
