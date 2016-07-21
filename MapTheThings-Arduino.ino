@@ -56,6 +56,14 @@ void assignAppSKeyCallback(uint8_t data[], uint16_t len) {
   Serial.println("assignAppSKey");
 }
 
+void assignSpreadingFactorCallback(uint8_t data[], uint16_t len) {
+  if (len==1) {
+    uint sf = data[0];
+    Serial.print("assignSpreadingFactor "); Serial.println(sf, DEC);
+    loraSetSF(sf);
+  }
+}
+
 CharacteristicConfigType charConfigs[] = {
 {
   UNINITIALIZED,
@@ -83,6 +91,11 @@ CharacteristicConfigType charConfigs[] = {
   UNINITIALIZED,
   "AT+GATTADDCHAR=UUID=0x2AD4,PROPERTIES=0x0A,MIN_LEN=16,MAX_LEN=16,DATATYPE=2,DESCRIPTION=AppSKey",
   assignAppSKeyCallback
+},
+{
+  UNINITIALIZED,
+  "AT+GATTADDCHAR=UUID=0x2AD5,PROPERTIES=0x0A,MIN_LEN=1,MAX_LEN=1,DESCRIPTION=SF,VALUE=10",
+  assignSpreadingFactorCallback
 },
 };
 

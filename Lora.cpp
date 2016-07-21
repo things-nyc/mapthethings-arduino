@@ -211,10 +211,25 @@ void setupLora() {
     LMIC_setLinkCheckMode(0);
 
     // Set data rate and transmit power (note: txpow seems to be ignored by the library)
-    LMIC_setDrTxpow(DR_SF7,20);
+    LMIC_setDrTxpow(DR_SF10,20);
 }
 
 void loopLora() {
     os_runloop_once();
+}
+
+void loraSetSF(uint sf) {
+  dr_t dr;
+  switch (sf) {
+    case 7: dr = DR_SF7; break;
+    case 8: dr = DR_SF8; break;
+    case 9: dr = DR_SF9; break;
+    case 10: dr = DR_SF10; break;
+    default:
+      dr = DR_SF10;
+      Serial.print(F("Invalid SF value")); Serial.println(sf, DEC);
+      break;
+  }
+  LMIC_setDrTxpow(dr,20);
 }
 
