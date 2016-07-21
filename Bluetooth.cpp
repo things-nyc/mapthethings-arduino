@@ -110,6 +110,9 @@ int32_t loraSendCharId;
 int32_t deviceInfoServiceId;
 int32_t deviceInfoCharId;
 
+int32_t batteryLevelServiceId;
+int32_t batteryLevelCharId;
+
 /**************************************************************************/
 /*!
     @brief  Sets up the HW an the BLE module (this function is called
@@ -194,25 +197,38 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   Serial.println(F("Adding the Device Info manufacturer name characteristic (UUID = 0x2A29): "));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A29,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=TheThingsNYC"), &deviceInfoCharId);
   if (! success) {
-    error(F("Could not add LoRa write characteristic"));
+    error(F("Could not add Device Info manufacturer name characteristic"));
   }
   Serial.println(F("Adding the Device Info software version characteristic (UUID = 0x2A28): "));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A28,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=" MAPTHETHINGS_SOFTWARE_VERSION), &deviceInfoCharId);
   if (! success) {
     error(F("Could not add Device Info software version characteristic"));
   }
+
+  // Battery service: 0x180F
+  // Battery level: 0x2A19, 1 byte, 0-100 values (read mandatory, notify optional)
+  Serial.println(F("Adding the Battery level service definition (UUID = 0x180F): "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180F"), &batteryLevelServiceId);
+  if (! success) {
+    error(F("Could not add Battery level service"));
+  }
+  Serial.println(F("Adding the Battery level characteristic (UUID = 0x2A19): "));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A19,PROPERTIES=0x12,MIN_LEN=1,MAX_LEN=1,VALUE=00"), &batteryLevelCharId);
+  if (! success) {
+    error(F("Could not add Battery level characteristic"));
+  }
   
-  /* Add the Heart Rate Service to the advertising data (needed for Nordic apps to detect the service) */
+  /* Add the LoRa to the advertising data (needed for Nordic apps to detect the service) */
   Serial.print(F("Adding LoRa and Device info UUIDs to the advertising payload: "));
   // 02-01-06 - len-flagtype-flags
-  // 05-02 - len-16bitlisttype- 0x180A(Device) - 0x180D(Heart Rate)
+  // 07-02 - len-16bitlisttype- 0x180A(Device) - 0x180F(Battery) - 0x180D(Heart Rate)
   //   bit
   //    0 LE Limited Discoverable Mode - 180sec advertising
   //    1 LE General Discoverable Mode - Indefinite advertising time
   //    2 BR/EDR Not Supported
   //    3 Simultaneous LE and BR/EDR (Controller)
   //    4 Simultaneous LE and BR/EDR (Host)
-  ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-05-02-0A-18-30-18") );
+  ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-07-02-0A-18-0F-18-30-18") );
 
   /* Reset the device for the new service setting changes to take effect */
   Serial.print(F("Performing a SW reset (service changes require a reset): "));
@@ -228,19 +244,13 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   Serial.println();
 }
 
-void sendHeartrate(void) {
-  int heart_rate = random(50, 100);
-
-//  Serial.print(F("Updating HRM value to "));
-//  Serial.print(heart_rate);
-//  Serial.println(F(" BPM"));
-
+void sendBatteryLevel(uint8_t level) {
   /* Command is sent when \n (\r) or println is called */
   /* AT+GATTCHAR=CharacteristicID,value */
-//  ble.print( F("AT+GATTCHAR=") );
-//  ble.print( hrmMeasureCharId );
-//  ble.print( F(",00-") );
-//  ble.println(heart_rate, HEX);
+  ble.print( F("AT+GATTCHAR=") );
+  ble.print( batteryLevelCharId );
+  ble.print( F(",") );
+  ble.println(level, HEX);
 
   /* Check if command executed OK */
 //  if ( !ble.waitForOK() )
@@ -249,14 +259,10 @@ void sendHeartrate(void) {
 //  }
 }
 
-const long updateInterval = 1000;
-TimeoutTimer timer;
+const static long updateInterval = 1000;
+static TimeoutTimer timer;
 
 /** Send randomized heart rate data every bluetoothInterval **/
 void loopBluetooth(void) {
     ble.update(200);
-    if (timer.expired()) {
-        timer.set(updateInterval);
-        sendHeartrate();
-    }
 }

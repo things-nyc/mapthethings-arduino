@@ -11,6 +11,7 @@
 
 #include "Lora.h"
 #include "Bluetooth.h"
+#include "Adafruit_BLE.h" // Define TimeoutTimer
 
 extern "C"{
   void debugLog(char *msg, uint16_t value);
@@ -99,7 +100,39 @@ void setup() {
     setBluetoothCharData(charConfigs[4].charId, APPSKEY, 16);
 }
 
+void readBatteryLevel() {
+    #define VBATPIN A7
+       
+    float measuredvbat = analogRead(VBATPIN);
+    measuredvbat *= 2;    // we divided by 2, so multiply back
+    measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
+    measuredvbat /= 1024; // convert to voltage
+    Serial.print("VBat: " ); Serial.println(measuredvbat);
+
+    // Normalize to 0-100
+    float minv = 3.2;
+    float maxv = 4.2;
+    int level = 100 * (measuredvbat - minv) / (maxv - minv);
+    Serial.print("VBat int: " ); Serial.println(level);
+    if (level<0) {
+      level = 0;
+    }
+    else if (level>100) {
+      level = 100;
+    }
+    sendBatteryLevel(level);
+}
+
+const static long batCheckInterval = 60000; // Every minute
+static TimeoutTimer batCheckTimer;
+static uint8_t batteryLevel;
+
 void loop() {
     loopBluetooth();
     loopLora();
+
+    if (batCheckTimer.expired()) {
+        batCheckTimer.set(batCheckInterval);
+        readBatteryLevel();
+    }
 }
