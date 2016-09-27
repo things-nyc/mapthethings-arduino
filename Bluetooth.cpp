@@ -99,6 +99,7 @@ void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
 // A small helper
 void error(const __FlashStringHelper*err) {
   Serial.println(err);
+  delay(1000);
   while (1);
 }
 
@@ -125,9 +126,6 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   charConfigsCount = cccount;
   
   boolean success;
-
-  Serial.println(F("Adafruit Bluefruit Heart Rate Monitor (HRM) Example"));
-  Serial.println(F("---------------------------------------------------"));
 
   /* Initialise the module */
   Serial.print(F("Initialising the Bluefruit LE module: "));
@@ -219,7 +217,7 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   }
   
   /* Add the LoRa to the advertising data (needed for Nordic apps to detect the service) */
-  Serial.print(F("Adding LoRa and Device info UUIDs to the advertising payload: "));
+  Serial.println(F("Adding LoRa and Device info UUIDs to the advertising payload: "));
   // 02-01-06 - len-flagtype-flags
   // 07-02 - len-16bitlisttype- 0x180A(Device) - 0x180F(Battery) - 0x180D(Heart Rate)
   //   bit
@@ -231,17 +229,15 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-07-02-0A-18-0F-18-30-18") );
 
   /* Reset the device for the new service setting changes to take effect */
-  Serial.print(F("Performing a SW reset (service changes require a reset): "));
+  Serial.println(F("Performing a SW reset (service changes require a reset): "));
   ble.reset();
 
   Serial.println(F("Signing up for callbacks on characteristic write: "));
   for (int i=0; i<cccount; ++i) {
-    Serial.println(cconfigs[i].charId);
     ble.setBleGattRxCallback(cconfigs[i].charId, gattCallback);
   }
   
   ble.verbose(false);
-  Serial.println();
 }
 
 void sendBatteryLevel(uint8_t level) {

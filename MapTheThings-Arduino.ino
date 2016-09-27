@@ -14,12 +14,27 @@
 #include "Adafruit_BLE.h" // Define TimeoutTimer
 
 extern "C"{
+  void debugPrint(const char *msg);
   void debugLog(char *msg, uint16_t value);
+  void debugLogData(char *msg, uint8_t data[], uint16_t len);
+}
+
+void debugPrint(const char *msg) {
+  Serial.println(msg);
 }
 
 void debugLog(char *msg, uint16_t value) {
   Serial.println(msg);
   Serial.println(value, HEX);
+}
+
+void debugLogData(char *msg, uint8_t data[], uint16_t len) {
+  Serial.print(msg);
+  Serial.print(": ");
+  for(int i=0; i<len; ++i) {
+    Serial.print(data[i], HEX);
+  }
+  Serial.println("");
 }
 
 #define CMD_DISCONNECT 1
@@ -36,30 +51,26 @@ void sendCommandCallback(uint8_t data[], uint16_t len) {
 }
 
 void sendPacketCallback(uint8_t data[], uint16_t len) {
-  Serial.print("sendPacket: ");
-  for(int i=0; i<len; ++i) {
-    Serial.print(data[i], HEX);
-  }
-  Serial.println("");
+  debugLogData("sendPacket: ", data, len);
   loraSendBytes(data, len);
 }
 
 void assignDevAddrCallback(uint8_t data[], uint16_t len) {
-  Serial.println("assignDevAddr");
+  debugLogData("assignDevAddr", data, len);
 }
 
 void assignNwkSKeyCallback(uint8_t data[], uint16_t len) {
-  Serial.println("assignNwkSKey");
+  debugLogData("assignNwkSKey", data, len);
 }
 
 void assignAppSKeyCallback(uint8_t data[], uint16_t len) {
-  Serial.println("assignAppSKey");
+  debugLogData("assignAppSKey", data, len);
 }
 
 void assignSpreadingFactorCallback(uint8_t data[], uint16_t len) {
   if (len==1) {
     uint sf = data[0];
-    Serial.print("assignSpreadingFactor "); Serial.println(sf, DEC);
+    Serial.print("assignSpreadingFactor: "); Serial.println(sf, DEC);
     loraSetSF(sf);
   }
 }
@@ -101,16 +112,20 @@ CharacteristicConfigType charConfigs[] = {
 
 void setup() {
     Serial.begin(115200);
+    delay(1000);
     Serial.println(F("Starting"));
     digitalWrite(LED_BUILTIN, LOW); // off
 
+    Serial.println(F("setupBluetooth"));
     setupBluetooth(charConfigs, COUNT(charConfigs));
+    Serial.println(F("setupLora"));
     setupLora();
 
     uint32_t dev = __builtin_bswap32(DEVADDR);
     setBluetoothCharData(charConfigs[2].charId, (const uint8_t*)&dev, 4);
     setBluetoothCharData(charConfigs[3].charId, NWKSKEY, 16);
     setBluetoothCharData(charConfigs[4].charId, APPSKEY, 16);
+    Serial.println(F("setup done"));
 }
 
 void readBatteryLevel() {
