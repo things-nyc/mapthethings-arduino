@@ -48,9 +48,9 @@ void os_getDevKey (u1_t* buf) { }
 
 // Pin mapping
 const lmic_pinmap lmic_pins = {
-    .nss = 18, // 6,
+    .nss = 19,
     .rxtx = LMIC_UNUSED_PIN,
-    .rst = 19, // 5,
+    .rst = 18,
     .dio = {16, 5, 6}, // Moved dio0 from 17 because of overlapping ExtInt4 (pin6)
 };
 
