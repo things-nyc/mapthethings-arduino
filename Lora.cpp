@@ -199,14 +199,9 @@ void setupLora() {
     // frequency is not configured here.
     #endif
 
-    // Disable all but 2nd group of 8 channels
-    for (int i=0; i<8; ++i) {
-      LMIC_disableChannel(i);
-    }
-    for (int i=16; i<72; ++i) {
-      LMIC_disableChannel(i);
-    }
-
+    Serial.println(F("setupLora: 4"));
+    LMIC_selectSubBand(1);
+    
     // Disable link check validation
     LMIC_setLinkCheckMode(0);
 
