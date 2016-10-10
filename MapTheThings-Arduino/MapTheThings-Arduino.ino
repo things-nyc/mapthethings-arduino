@@ -26,7 +26,7 @@ void debugPrint(const char *msg) {
 }
 
 void debugLog(const char *msg, uint16_t value) {
-  Log.Debug("%s %x"CR, msg, value);
+  Log.Debug("%s %x" CR, msg, value);
 }
 
 void debugLogData(const char *msg, uint8_t data[], uint16_t len) {
@@ -41,7 +41,7 @@ void debugLogData(const char *msg, uint8_t data[], uint16_t len) {
 
 void sendCommandCallback(uint8_t data[], uint16_t len) {
   uint16_t command = *(uint16_t *)data;
-  Log.Debug("sendCommand: %d"CR, command);
+  Log.Debug("sendCommand: %d" CR, command);
   switch (command) {
     case CMD_DISCONNECT:
       bluetoothDisconnect();
@@ -69,7 +69,7 @@ void assignAppSKeyCallback(uint8_t data[], uint16_t len) {
 void assignSpreadingFactorCallback(uint8_t data[], uint16_t len) {
   if (len==1) {
     uint sf = data[0];
-    Log.Debug("assignSpreadingFactor: %d"CR, sf);
+    Log.Debug("assignSpreadingFactor: %d" CR, sf);
     loraSetSF(sf);
   }
 }
@@ -119,19 +119,19 @@ void setup() {
     Log.Init(LOG_LEVEL_DEBUG, BluetoothPrinter);
     delay(1000);
 
-    Log.Debug(F("Starting"CR));
+    Log.Debug(F("Starting" CR));
     digitalWrite(LED_BUILTIN, LOW); // off
 
-    Log.Debug(F("setupBluetooth"CR));
+    Log.Debug(F("setupBluetooth" CR));
     setupBluetooth(charConfigs, COUNT(charConfigs));
-    Log.Debug(F("setupLora"CR));
+    Log.Debug(F("setupLora" CR));
     setupLora();
 
     uint32_t dev = __builtin_bswap32(DEVADDR);
     setBluetoothCharData(charConfigs[2].charId, (const uint8_t*)&dev, 4);
     setBluetoothCharData(charConfigs[3].charId, NWKSKEY, 16);
     setBluetoothCharData(charConfigs[4].charId, APPSKEY, 16);
-    Log.Debug(F("setup done"CR));
+    Log.Debug(F("setup done" CR));
 }
 
 void readBatteryLevel() {
@@ -141,13 +141,13 @@ void readBatteryLevel() {
     measuredvbat *= 2;    // we divided by 2, so multiply back
     measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
     measuredvbat /= 1024; // convert to voltage
-    Log.Debug("VBat: %f"CR, measuredvbat);
+    Log.Debug("VBat: %f" CR, measuredvbat);
 
     // Normalize to 0-100
     float minv = 3.2;
     float maxv = 4.2;
     int level = 100 * (measuredvbat - minv) / (maxv - minv);
-    Log.Debug("VBat int: %d"CR, level);
+    Log.Debug("VBat int: %d" CR, level);
     if (level<0) {
       level = 0;
     }

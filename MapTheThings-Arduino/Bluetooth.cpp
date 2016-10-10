@@ -83,7 +83,7 @@ void setBluetoothCharData(uint8_t charID, uint8_t const data[], uint8_t size) {
 }
 
 void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
-  Log.Debug("gattCallback (index=%d)"CR, index);
+  Log.Debug("gattCallback (index=%d)" CR, index);
   for (int i=0; i<charConfigsCount; ++i) {
     if (index==charConfigs[i].charId) {
 //      for(int i=0; i<len; ++i) {
@@ -94,7 +94,7 @@ void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
       return;
     }
   }
-  Log.Error(F("Failed to find callback"CR));
+  Log.Error(F("Failed to find callback" CR));
 }
 
 /* The service information */
@@ -122,26 +122,26 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   boolean success;
 
   /* Initialise the module */
-  Log.Debug(F("Initialising the Bluefruit LE module: "CR));
+  Log.Debug(F("Initialising the Bluefruit LE module: " CR));
 
   if ( !ble.begin(!VERBOSE_MODE) )
   {
-    Log.Error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"CR));
+    Log.Error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?" CR));
     return;
   }
-  Log.Debug( F("OK!"CR) );
+  Log.Debug( F("OK!" CR) );
 
   /* Perform a factory reset to make sure everything is in a known state */
-  Log.Debug(F("Performing a factory reset: "CR));
+  Log.Debug(F("Performing a factory reset: " CR));
   if (! ble.factoryReset() ){
-       Log.Error(F("Couldn't factory reset"CR));
+       Log.Error(F("Couldn't factory reset" CR));
        return;
   }
 
   /* Disable command echo from Bluefruit */
   ble.echo(false);
 
-  Log.Debug("Requesting Bluefruit info:"CR);
+  Log.Debug("Requesting Bluefruit info:" CR);
   /* Print Bluefruit information */
   ble.info();
 
@@ -150,10 +150,10 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   // ble.setInterCharWriteDelay(5); // 5 ms
 
   /* Change the device name to make it easier to find */
-  Log.Debug(F("Setting device name to 'MapTheThings':"CR));
+  Log.Debug(F("Setting device name to 'MapTheThings':" CR));
 
   if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=MapTheThings")) ) {
-    Log.Error(F("Could not set device name?"CR));
+    Log.Error(F("Could not set device name?" CR));
     return;
   }
 
@@ -167,17 +167,17 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
 
   /* Add the LoRa Service definition */
   /* Service ID should be 1 */
-  Log.Debug(F("Adding the LoRa Service definition (UUID = 0x1830): "CR));
+  Log.Debug(F("Adding the LoRa Service definition (UUID = 0x1830): " CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1830"), &loraServiceId);
   if (! success) {
-    Log.Error(F("Could not add LoRa service"CR));
+    Log.Error(F("Could not add LoRa service" CR));
     return;
   }
 
-  Log.Debug(F("Adding the Logging Service definition (UUID = 0x1831): "CR));
+  Log.Debug(F("Adding the Logging Service definition (UUID = 0x1831): " CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1831"), &loraServiceId);
   if (! success) {
-    Log.Error(F("Could not add Logging service"CR));
+    Log.Error(F("Could not add Logging service" CR));
     return;
   }
 
@@ -189,47 +189,47 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
     Log.Debug(CR);
     success = ble.sendCommandWithIntReply(cconfigs[i].charDef, &cconfigs[i].charId);
     if (! success) {
-      Log.Error(F("Could not add characteristic"CR));
+      Log.Error(F("Could not add characteristic" CR));
       return;
     }
   }
 
-  Log.Debug(F("Adding the Device Info service definition (UUID = 0x180A):"CR));
+  Log.Debug(F("Adding the Device Info service definition (UUID = 0x180A):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180A"), &deviceInfoServiceId);
   if (! success) {
-    Log.Error(F("Could not add Device Info service"CR));
+    Log.Error(F("Could not add Device Info service" CR));
     return;
   }
-  Log.Debug(F("Adding the Device Info manufacturer name characteristic (UUID = 0x2A29):"CR));
+  Log.Debug(F("Adding the Device Info manufacturer name characteristic (UUID = 0x2A29):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A29,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=TheThingsNYC"), &deviceInfoCharId);
   if (! success) {
-    Log.Error(F("Could not add Device Info manufacturer name characteristic"CR));
+    Log.Error(F("Could not add Device Info manufacturer name characteristic" CR));
     return;
   }
-  Log.Debug(F("Adding the Device Info software version characteristic (UUID = 0x2A28):"CR));
+  Log.Debug(F("Adding the Device Info software version characteristic (UUID = 0x2A28):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A28,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=" MAPTHETHINGS_SOFTWARE_VERSION), &deviceInfoCharId);
   if (! success) {
-    Log.Error(F("Could not add Device Info software version characteristic"CR));
+    Log.Error(F("Could not add Device Info software version characteristic" CR));
     return;
   }
 
   // Battery service: 0x180F
   // Battery level: 0x2A19, 1 byte, 0-100 values (read mandatory, notify optional)
-  Log.Debug(F("Adding the Battery level service definition (UUID = 0x180F):"CR));
+  Log.Debug(F("Adding the Battery level service definition (UUID = 0x180F):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180F"), &batteryLevelServiceId);
   if (! success) {
     Log.Error(F("Could not add Battery level service"));
     return;
   }
-  Log.Debug(F("Adding the Battery level characteristic (UUID = 0x2A19):"CR));
+  Log.Debug(F("Adding the Battery level characteristic (UUID = 0x2A19):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A19,PROPERTIES=0x12,MIN_LEN=1,MAX_LEN=1,VALUE=00"), &batteryLevelCharId);
   if (! success) {
-    Log.Error(F("Could not add Battery level characteristic"CR));
+    Log.Error(F("Could not add Battery level characteristic" CR));
     return;
   }
 
   /* Add the LoRa to the advertising data (needed for Nordic apps to detect the service) */
-  Log.Debug(F("Adding LoRa and Device info UUIDs to the advertising payload:"CR));
+  Log.Debug(F("Adding LoRa and Device info UUIDs to the advertising payload:" CR));
   // 02-01-06 - len-flagtype-flags
   // 09-02 - len-16bitlisttype- 0x180A(Device) - 0x180F(Battery) - 0x1830(LoRa) - 0x1831(Logging)
   //   bit
@@ -241,10 +241,10 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-09-02-0A-18-0F-18-30-18-31-18") );
 
   /* Reset the device for the new service setting changes to take effect */
-  Log.Debug(F("Performing a SW reset (service changes require a reset):"CR));
+  Log.Debug(F("Performing a SW reset (service changes require a reset):" CR));
   ble.reset();
 
-  Log.Debug(F("Signing up for callbacks on characteristic write: "CR));
+  Log.Debug(F("Signing up for callbacks on characteristic write: " CR));
   for (int i=0; i<cccount; ++i) {
     ble.setBleGattRxCallback(cconfigs[i].charId, gattCallback);
   }

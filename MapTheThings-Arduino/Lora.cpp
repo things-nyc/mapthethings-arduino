@@ -56,7 +56,7 @@ const lmic_pinmap lmic_pins = {
 static osjob_t timeoutjob;
 static void txtimeout_func(osjob_t *job) {
   digitalWrite(LED_BUILTIN, LOW); // off
-  Log.Debug(F("Transmit Timeout"CR));
+  Log.Debug(F("Transmit Timeout" CR));
   //txActive = false;
   LMIC_clrTxData ();
 }
@@ -66,11 +66,11 @@ bool loraSendBytes(uint8_t *data, uint16_t len) {
   //os_setTimedCallback(&txjob, t + ms2osticks(100), tx_func);
   // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
-        Log.Debug(F("OP_TXRXPEND, not sending"CR));
+        Log.Debug(F("OP_TXRXPEND, not sending" CR));
         return false; // Did not enqueue
     } else {
         // Prepare upstream data transmission at the next possible time.
-        Log.Debug(F("Packet queued"CR));
+        Log.Debug(F("Packet queued" CR));
         digitalWrite(LED_BUILTIN, HIGH); // off
         LMIC_setTxData2(1, data, len, 0);
     }
@@ -224,7 +224,7 @@ void loraSetSF(uint sf) {
     case 10: dr = DR_SF10; break;
     default:
       dr = DR_SF10;
-      Log.Debug(F("Invalid SF value: %d"CR), sf);
+      Log.Debug(F("Invalid SF value: %d" CR), sf);
       break;
   }
   LMIC_setDrTxpow(dr,20);
