@@ -4,9 +4,15 @@ The Arduino app portion of [MapTheThings](http://map.thethings.nyc), the
 global coverage map for The Things Network (TTN).
 
 ## Using the code
+
+### Using with platformIO
+- ```platformio run``` (to install libraries and build code)
+- ```platformio upload``` (to install code on a device)
+
+### Using with Arduino IDE
 - Install [Adafruit's Adafruit_BluefruitLE_nRF51 library](https://github.com/adafruit/Adafruit_BluefruitLE_nRF51) Arduino library
-- Install [Matthijs Kooijman's LMIC library](https://github.com/matthijskooijman/arduino-lmic)
-- Configure appropriately
+- Install [The Things Network New York's version of the IBM LMIC library](https://github.com/things-nyc/arduino-lmic)
+- Verify and Upload code
 
 ## Node Responsibilities
 - Advertise capabilities via BLE
