@@ -12,6 +12,7 @@
 #include "Lora.h"
 #include "Bluetooth.h"
 #include "Adafruit_BLE.h" // Define TimeoutTimer
+#include "Logging.h"
 
 extern "C"{
   void debugPrint(const char *msg);
@@ -20,29 +21,27 @@ extern "C"{
 }
 
 void debugPrint(const char *msg) {
-  Serial.println(msg);
+  Log.Debug(msg);
+  Log.Debug(CR);
 }
 
-void debugLog(char *msg, uint16_t value) {
-  Serial.println(msg);
-  Serial.println(value, HEX);
+void debugLog(const char *msg, uint16_t value) {
+  Log.Debug("%s %x"CR, msg, value);
 }
 
-void debugLogData(char *msg, uint8_t data[], uint16_t len) {
-  Serial.print(msg);
-  Serial.print(": ");
+void debugLogData(const char *msg, uint8_t data[], uint16_t len) {
+  Log.Debug("%s: ", msg);
   for(int i=0; i<len; ++i) {
-    Serial.print(data[i], HEX);
+    Log.Debug("%x", data[i]);
   }
-  Serial.println("");
+  Log.Debug(CR);
 }
 
 #define CMD_DISCONNECT 1
 
 void sendCommandCallback(uint8_t data[], uint16_t len) {
   uint16_t command = *(uint16_t *)data;
-  Serial.print("sendCommand: ");
-  Serial.println(command);
+  Log.Debug("sendCommand: %d"CR, command);
   switch (command) {
     case CMD_DISCONNECT:
       bluetoothDisconnect();
@@ -70,7 +69,7 @@ void assignAppSKeyCallback(uint8_t data[], uint16_t len) {
 void assignSpreadingFactorCallback(uint8_t data[], uint16_t len) {
   if (len==1) {
     uint sf = data[0];
-    Serial.print("assignSpreadingFactor: "); Serial.println(sf, DEC);
+    Log.Debug("assignSpreadingFactor: %d"CR, sf);
     loraSetSF(sf);
   }
 }
@@ -110,38 +109,45 @@ CharacteristicConfigType charConfigs[] = {
 },
 };
 
+void logToBluetooth(const char c) {
+  Serial.print(c);
+}
+LogPrinter BluetoothPrinter(logToBluetooth);
+
 void setup() {
-    Serial.begin(115200);
+    // Log.Init(LOG_LEVEL_DEBUG, 115200);
+    Log.Init(LOG_LEVEL_DEBUG, BluetoothPrinter);
     delay(1000);
-    Serial.println(F("Starting"));
+
+    Log.Debug(F("Starting"CR));
     digitalWrite(LED_BUILTIN, LOW); // off
 
-    Serial.println(F("setupBluetooth"));
+    Log.Debug(F("setupBluetooth"CR));
     setupBluetooth(charConfigs, COUNT(charConfigs));
-    Serial.println(F("setupLora"));
+    Log.Debug(F("setupLora"CR));
     setupLora();
 
     uint32_t dev = __builtin_bswap32(DEVADDR);
     setBluetoothCharData(charConfigs[2].charId, (const uint8_t*)&dev, 4);
     setBluetoothCharData(charConfigs[3].charId, NWKSKEY, 16);
     setBluetoothCharData(charConfigs[4].charId, APPSKEY, 16);
-    Serial.println(F("setup done"));
+    Log.Debug(F("setup done"CR));
 }
 
 void readBatteryLevel() {
     #define VBATPIN A7
-       
+
     float measuredvbat = analogRead(VBATPIN);
     measuredvbat *= 2;    // we divided by 2, so multiply back
     measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
     measuredvbat /= 1024; // convert to voltage
-    Serial.print("VBat: " ); Serial.println(measuredvbat);
+    Log.Debug("VBat: %f"CR, measuredvbat);
 
     // Normalize to 0-100
     float minv = 3.2;
     float maxv = 4.2;
     int level = 100 * (measuredvbat - minv) / (maxv - minv);
-    Serial.print("VBat int: " ); Serial.println(level);
+    Log.Debug("VBat int: %d"CR, level);
     if (level<0) {
       level = 0;
     }
@@ -153,7 +159,7 @@ void readBatteryLevel() {
 
 const static long batCheckInterval = 60000; // Every minute
 static TimeoutTimer batCheckTimer;
-static uint8_t batteryLevel;
+// static uint8_t batteryLevel;
 
 void loop() {
     loopBluetooth();

@@ -7,10 +7,9 @@
  *
  * Do not forget to define the radio type correctly in config.h.
  */
-#include <lmic.h>
-#include <hal/hal.h>
 #include <SPI.h>
 #include "Lora.h"
+#include "Logging.h"
 
 #if defined(DISABLE_INVERT_IQ_ON_RX)
 #error This example requires DISABLE_INVERT_IQ_ON_RX to be NOT set. Update \
@@ -57,7 +56,7 @@ const lmic_pinmap lmic_pins = {
 static osjob_t timeoutjob;
 static void txtimeout_func(osjob_t *job) {
   digitalWrite(LED_BUILTIN, LOW); // off
-  Serial.println(F("Transmit Timeout"));
+  Log.Debug(F("Transmit Timeout"CR));
   //txActive = false;
   LMIC_clrTxData ();
 }
@@ -67,11 +66,11 @@ bool loraSendBytes(uint8_t *data, uint16_t len) {
   //os_setTimedCallback(&txjob, t + ms2osticks(100), tx_func);
   // Check if there is not a current TX/RX job running
     if (LMIC.opmode & OP_TXRXPEND) {
-        Serial.println(F("OP_TXRXPEND, not sending"));
+        Log.Debug(F("OP_TXRXPEND, not sending"CR));
         return false; // Did not enqueue
     } else {
         // Prepare upstream data transmission at the next possible time.
-        Serial.println(F("Packet queued"));
+        Log.Debug(F("Packet queued"CR));
         digitalWrite(LED_BUILTIN, HIGH); // off
         LMIC_setTxData2(1, data, len, 0);
     }
@@ -81,69 +80,73 @@ bool loraSendBytes(uint8_t *data, uint16_t len) {
 }
 
 void onEvent (ev_t ev) {
-    Serial.print(os_getTime());
-    Serial.print(": ");
+    Log.Debug("%d: ", os_getTime());
     switch(ev) {
         case EV_SCAN_TIMEOUT:
-            Serial.println(F("EV_SCAN_TIMEOUT"));
+            Log.Debug(F("EV_SCAN_TIMEOUT"));
             break;
         case EV_BEACON_FOUND:
-            Serial.println(F("EV_BEACON_FOUND"));
+            Log.Debug(F("EV_BEACON_FOUND"));
             break;
         case EV_BEACON_MISSED:
-            Serial.println(F("EV_BEACON_MISSED"));
+            Log.Debug(F("EV_BEACON_MISSED"));
             break;
         case EV_BEACON_TRACKED:
-            Serial.println(F("EV_BEACON_TRACKED"));
+            Log.Debug(F("EV_BEACON_TRACKED"));
             break;
         case EV_JOINING:
-            Serial.println(F("EV_JOINING"));
+            Log.Debug(F("EV_JOINING"));
             break;
         case EV_JOINED:
-            Serial.println(F("EV_JOINED"));
+            Log.Debug(F("EV_JOINED"));
             break;
         case EV_RFU1:
-            Serial.println(F("EV_RFU1"));
+            Log.Debug(F("EV_RFU1"));
             break;
         case EV_JOIN_FAILED:
-            Serial.println(F("EV_JOIN_FAILED"));
+            Log.Debug(F("EV_JOIN_FAILED"));
             break;
         case EV_REJOIN_FAILED:
-            Serial.println(F("EV_REJOIN_FAILED"));
+            Log.Debug(F("EV_REJOIN_FAILED"));
             break;
             break;
         case EV_TXCOMPLETE:
             os_clearCallback(&timeoutjob);
-            Serial.println(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
+            Log.Debug(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
             digitalWrite(LED_BUILTIN, LOW); // off
 
             if(LMIC.dataLen) {
                 // data received in rx slot after tx
-                Serial.print(F("Data Received: "));
-                Serial.write(LMIC.frame+LMIC.dataBeg, LMIC.dataLen);
-                Serial.println();
+                Log.Debug(F("Data Received: "));
+                u1_t *p = LMIC.frame+LMIC.dataBeg;
+                for (int i=0; i<LMIC.dataLen; ++i) {
+                  Log.Debug("%x", *p++);
+                }
+                // Log.Debug("%*h", LMIC.dataLen, LMIC.frame+LMIC.dataBeg);
+                Log.Debug(CR);
             }
             break;
         case EV_LOST_TSYNC:
-            Serial.println(F("EV_LOST_TSYNC"));
+            Log.Debug(F("EV_LOST_TSYNC"));
             break;
         case EV_RESET:
-            Serial.println(F("EV_RESET"));
+            Log.Debug(F("EV_RESET"));
             break;
         case EV_RXCOMPLETE:
             // data received in ping slot
-            Serial.println(F("EV_RXCOMPLETE"));
+            Log.Debug(F("EV_RXCOMPLETE"));
             break;
         case EV_LINK_DEAD:
-            Serial.println(F("EV_LINK_DEAD"));
+            Log.Debug(F("EV_LINK_DEAD"));
             break;
         case EV_LINK_ALIVE:
-            Serial.println(F("EV_LINK_ALIVE"));
+            Log.Debug(F("EV_LINK_ALIVE"));
             break;
          default:
-            Serial.println(F("Unknown event"));
+            Log.Debug(F("Unknown event"));
             break;
     }
+    Log.Debug(CR);
 }
 
 void setupLora() {
@@ -171,7 +174,7 @@ void setupLora() {
     memcpy_P(nwkskey, NWKSKEY, sizeof(NWKSKEY));
     LMIC_setSession (0x1, DEVADDR, nwkskey, appskey);
     #else
-    // If not running an AVR with PROGMEM, just use the arrays directly 
+    // If not running an AVR with PROGMEM, just use the arrays directly
     LMIC_setSession (0x1, DEVADDR, NWKSKEY, APPSKEY);
     #endif
 
@@ -199,9 +202,8 @@ void setupLora() {
     // frequency is not configured here.
     #endif
 
-    Serial.println(F("setupLora: 4"));
     LMIC_selectSubBand(1);
-    
+
     // Disable link check validation
     LMIC_setLinkCheckMode(0);
 
@@ -222,9 +224,8 @@ void loraSetSF(uint sf) {
     case 10: dr = DR_SF10; break;
     default:
       dr = DR_SF10;
-      Serial.print(F("Invalid SF value")); Serial.println(sf, DEC);
+      Log.Debug(F("Invalid SF value: %d"CR), sf);
       break;
   }
   LMIC_setDrTxpow(dr,20);
 }
-

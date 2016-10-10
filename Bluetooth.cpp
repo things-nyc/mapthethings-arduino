@@ -9,7 +9,7 @@
  - Get/Set AppSKey
  - Get/Set DevEUI
  - RequestJoin
- 
+
  Adapted from an example for the nRF51822 based Bluefruit LE modules
 
  Pick one up today in the adafruit shop!
@@ -48,6 +48,7 @@
 #include "BluefruitConfig.h"
 
 #include "Bluetooth.h"
+#include "Logging.h"
 
 // Create the bluefruit object, either software serial...uncomment these lines
 /*
@@ -82,25 +83,18 @@ void setBluetoothCharData(uint8_t charID, uint8_t const data[], uint8_t size) {
 }
 
 void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
-//  Serial.println("gattCallback");
-//  Serial.println(index);
+  Log.Debug("gattCallback (index=%d)"CR, index);
   for (int i=0; i<charConfigsCount; ++i) {
     if (index==charConfigs[i].charId) {
 //      for(int i=0; i<len; ++i) {
-//        Serial.print(data[i], HEX);
+//        Log.Debug("%x", data[i]);
 //      }
+//      Log.Debug(CR);
       charConfigs[i].callback(data, len);
       return;
     }
   }
-  Serial.println("Failed to find callback");
-}
-
-// A small helper
-void error(const __FlashStringHelper*err) {
-  Serial.println(err);
-  delay(1000);
-  while (1);
+  Log.Error(F("Failed to find callback"CR));
 }
 
 /* The service information */
@@ -124,28 +118,30 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
 {
   charConfigs = cconfigs;
   charConfigsCount = cccount;
-  
+
   boolean success;
 
   /* Initialise the module */
-  Serial.print(F("Initialising the Bluefruit LE module: "));
+  Log.Debug(F("Initialising the Bluefruit LE module: "CR));
 
   if ( !ble.begin(!VERBOSE_MODE) )
   {
-    error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
+    Log.Error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"CR));
+    return;
   }
-  Serial.println( F("OK!") );
+  Log.Debug( F("OK!"CR) );
 
   /* Perform a factory reset to make sure everything is in a known state */
-  Serial.println(F("Performing a factory reset: "));
+  Log.Debug(F("Performing a factory reset: "CR));
   if (! ble.factoryReset() ){
-       error(F("Couldn't factory reset"));
+       Log.Error(F("Couldn't factory reset"CR));
+       return;
   }
 
   /* Disable command echo from Bluefruit */
   ble.echo(false);
 
-  Serial.println("Requesting Bluefruit info:");
+  Log.Debug("Requesting Bluefruit info:"CR);
   /* Print Bluefruit information */
   ble.info();
 
@@ -154,70 +150,79 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   // ble.setInterCharWriteDelay(5); // 5 ms
 
   /* Change the device name to make it easier to find */
-  Serial.println(F("Setting device name to 'MapTheThings': "));
+  Log.Debug(F("Setting device name to 'MapTheThings':"CR));
 
   if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=MapTheThings")) ) {
-    error(F("Could not set device name?"));
+    Log.Error(F("Could not set device name?"CR));
+    return;
   }
 
   // LED Activity command is only supported from 0.6.6
   if ( ble.isVersionAtLeast(MINIMUM_FIRMWARE_VERSION) )
   {
     // Change Mode LED Activity
-    Serial.println(F("Change LED activity to " MODE_LED_BEHAVIOUR));
+    Log.Debug(F("Change LED activity to " MODE_LED_BEHAVIOUR CR));
     ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
   }
 
   /* Add the LoRa Service definition */
   /* Service ID should be 1 */
-  Serial.println(F("Adding the LoRa Service definition (UUID = 0x1830): "));
+  Log.Debug(F("Adding the LoRa Service definition (UUID = 0x1830): "CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1830"), &loraServiceId);
   if (! success) {
-    error(F("Could not add HRM service"));
+    Log.Error(F("Could not add LoRa service"CR));
+    return;
   }
 
   /* Add the LoRa write characteristic */
   /* Chars ID for Measurement should be 1 */
   for (int i=0; i<cccount; ++i) {
-    Serial.print(F("Adding characteristic: "));
-    Serial.println(cconfigs[i].charDef);
+    Log.Debug(F("Adding characteristic: "));
+    Log.Debug(cconfigs[i].charDef);
+    Log.Debug(CR);
     success = ble.sendCommandWithIntReply(cconfigs[i].charDef, &cconfigs[i].charId);
     if (! success) {
-      error(F("Could not add characteristic"));
+      Log.Error(F("Could not add characteristic"CR));
+      return;
     }
   }
 
-  Serial.println(F("Adding the Device Info service definition (UUID = 0x180A): "));
+  Log.Debug(F("Adding the Device Info service definition (UUID = 0x180A):"CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180A"), &deviceInfoServiceId);
   if (! success) {
-    error(F("Could not add Device Info service"));
+    Log.Error(F("Could not add Device Info service"CR));
+    return;
   }
-  Serial.println(F("Adding the Device Info manufacturer name characteristic (UUID = 0x2A29): "));
+  Log.Debug(F("Adding the Device Info manufacturer name characteristic (UUID = 0x2A29):"CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A29,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=TheThingsNYC"), &deviceInfoCharId);
   if (! success) {
-    error(F("Could not add Device Info manufacturer name characteristic"));
+    Log.Error(F("Could not add Device Info manufacturer name characteristic"CR));
+    return;
   }
-  Serial.println(F("Adding the Device Info software version characteristic (UUID = 0x2A28): "));
+  Log.Debug(F("Adding the Device Info software version characteristic (UUID = 0x2A28):"CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A28,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=" MAPTHETHINGS_SOFTWARE_VERSION), &deviceInfoCharId);
   if (! success) {
-    error(F("Could not add Device Info software version characteristic"));
+    Log.Error(F("Could not add Device Info software version characteristic"CR));
+    return;
   }
 
   // Battery service: 0x180F
   // Battery level: 0x2A19, 1 byte, 0-100 values (read mandatory, notify optional)
-  Serial.println(F("Adding the Battery level service definition (UUID = 0x180F): "));
+  Log.Debug(F("Adding the Battery level service definition (UUID = 0x180F):"CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180F"), &batteryLevelServiceId);
   if (! success) {
-    error(F("Could not add Battery level service"));
+    Log.Error(F("Could not add Battery level service"));
+    return;
   }
-  Serial.println(F("Adding the Battery level characteristic (UUID = 0x2A19): "));
+  Log.Debug(F("Adding the Battery level characteristic (UUID = 0x2A19):"CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A19,PROPERTIES=0x12,MIN_LEN=1,MAX_LEN=1,VALUE=00"), &batteryLevelCharId);
   if (! success) {
-    error(F("Could not add Battery level characteristic"));
+    Log.Error(F("Could not add Battery level characteristic"CR));
+    return;
   }
-  
+
   /* Add the LoRa to the advertising data (needed for Nordic apps to detect the service) */
-  Serial.println(F("Adding LoRa and Device info UUIDs to the advertising payload: "));
+  Log.Debug(F("Adding LoRa and Device info UUIDs to the advertising payload:"CR));
   // 02-01-06 - len-flagtype-flags
   // 07-02 - len-16bitlisttype- 0x180A(Device) - 0x180F(Battery) - 0x180D(Heart Rate)
   //   bit
@@ -229,17 +234,24 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-07-02-0A-18-0F-18-30-18") );
 
   /* Reset the device for the new service setting changes to take effect */
-  Serial.println(F("Performing a SW reset (service changes require a reset): "));
+  Log.Debug(F("Performing a SW reset (service changes require a reset):"CR));
   ble.reset();
 
-  Serial.println(F("Signing up for callbacks on characteristic write: "));
+  Log.Debug(F("Signing up for callbacks on characteristic write: "CR));
   for (int i=0; i<cccount; ++i) {
     ble.setBleGattRxCallback(cconfigs[i].charId, gattCallback);
   }
-  
+
   ble.verbose(false);
 }
 
+static void waitForOK(const char * op) {
+  if ( !ble.waitForOK() ) {
+    Log.Error(F("Failed to get response! "));
+    Log.Error(op);
+    Log.Error(CR);
+  }
+}
 void sendBatteryLevel(uint8_t level) {
   /* Command is sent when \n (\r) or println is called */
   /* AT+GATTCHAR=CharacteristicID,value */
@@ -248,11 +260,7 @@ void sendBatteryLevel(uint8_t level) {
   ble.print( F(",") );
   ble.println(level, HEX);
 
-  /* Check if command executed OK */
-//  if ( !ble.waitForOK() )
-//  {
-//    Serial.println(F("Failed to get response!"));
-//  }
+  waitForOK("Send battery level");
 }
 
 const static long updateInterval = 1000;
