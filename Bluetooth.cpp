@@ -174,6 +174,13 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
     return;
   }
 
+  Log.Debug(F("Adding the Logging Service definition (UUID = 0x1831): "CR));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1831"), &loraServiceId);
+  if (! success) {
+    Log.Error(F("Could not add Logging service"CR));
+    return;
+  }
+
   /* Add the LoRa write characteristic */
   /* Chars ID for Measurement should be 1 */
   for (int i=0; i<cccount; ++i) {
@@ -224,14 +231,14 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   /* Add the LoRa to the advertising data (needed for Nordic apps to detect the service) */
   Log.Debug(F("Adding LoRa and Device info UUIDs to the advertising payload:"CR));
   // 02-01-06 - len-flagtype-flags
-  // 07-02 - len-16bitlisttype- 0x180A(Device) - 0x180F(Battery) - 0x180D(Heart Rate)
+  // 09-02 - len-16bitlisttype- 0x180A(Device) - 0x180F(Battery) - 0x1830(LoRa) - 0x1831(Logging)
   //   bit
   //    0 LE Limited Discoverable Mode - 180sec advertising
   //    1 LE General Discoverable Mode - Indefinite advertising time
   //    2 BR/EDR Not Supported
   //    3 Simultaneous LE and BR/EDR (Controller)
   //    4 Simultaneous LE and BR/EDR (Host)
-  ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-07-02-0A-18-0F-18-30-18") );
+  ble.sendCommandCheckOK( F("AT+GAPSETADVDATA=02-01-06-09-02-0A-18-0F-18-30-18-31-18") );
 
   /* Reset the device for the new service setting changes to take effect */
   Log.Debug(F("Performing a SW reset (service changes require a reset):"CR));
