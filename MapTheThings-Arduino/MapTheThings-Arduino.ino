@@ -109,10 +109,12 @@ CharacteristicConfigType charConfigs[] = {
 },
 };
 
-void logToBluetooth(const char c) {
-  Serial.print(c);
+static void logToBluetooth(const char *s) {
+  Serial.print(s);
+  sendLogMessage(s);
 }
-LogPrinter BluetoothPrinter(logToBluetooth);
+static char logBuffer[200];
+LogBufferedPrinter BluetoothPrinter(logToBluetooth, logBuffer, sizeof(logBuffer));
 
 void setup() {
     // Log.Init(LOG_LEVEL_DEBUG, 115200);
@@ -159,7 +161,6 @@ void readBatteryLevel() {
 
 const static long batCheckInterval = 60000; // Every minute
 static TimeoutTimer batCheckTimer;
-// static uint8_t batteryLevel;
 
 void loop() {
     loopBluetooth();

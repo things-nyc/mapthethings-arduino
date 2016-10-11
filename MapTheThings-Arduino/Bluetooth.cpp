@@ -102,6 +102,9 @@ void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
 int32_t loraServiceId;
 int32_t loraSendCharId;
 
+int32_t logServiceId;
+int32_t logMessageCharId;
+
 int32_t deviceInfoServiceId;
 int32_t deviceInfoCharId;
 
@@ -174,13 +177,6 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
     return;
   }
 
-  Log.Debug(F("Adding the Logging Service definition (UUID = 0x1831): " CR));
-  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1831"), &loraServiceId);
-  if (! success) {
-    Log.Error(F("Could not add Logging service" CR));
-    return;
-  }
-
   /* Add the LoRa write characteristic */
   /* Chars ID for Measurement should be 1 */
   for (int i=0; i<cccount; ++i) {
@@ -192,6 +188,20 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
       Log.Error(F("Could not add characteristic" CR));
       return;
     }
+  }
+  Log.Debug(F("Done adding LoRa service" CR));
+
+  Log.Debug(F("Adding the Logging Service definition (UUID = 0x1831): " CR));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1831"), &logServiceId);
+  if (! success) {
+    Log.Error(F("Could not add Logging service" CR));
+    return;
+  }
+  Log.Debug(F("Adding the log message characteristic (UUID = 0x2AD6):" CR));
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2AD6,PROPERTIES=0x10,MIN_LEN=1,MAX_LEN=20"), &logMessageCharId);
+  if (! success) {
+    Log.Error(F("Could not add log message characteristic" CR));
+    return;
   }
 
   Log.Debug(F("Adding the Device Info service definition (UUID = 0x180A):" CR));
@@ -259,6 +269,7 @@ static void waitForOK(const char * op) {
     Log.Error(CR);
   }
 }
+
 void sendBatteryLevel(uint8_t level) {
   /* Command is sent when \n (\r) or println is called */
   /* AT+GATTCHAR=CharacteristicID,value */
@@ -268,6 +279,19 @@ void sendBatteryLevel(uint8_t level) {
   ble.println(level, HEX);
 
   waitForOK("Send battery level");
+}
+
+void sendLogMessage(const char *s) {
+  // NOTE: Don't use Log.Debug because infinite recursion.
+  // Serial.print(F("Sending message: ")); Serial.println(s);
+  int len = strlen(s);
+  // Break into 20 byte chunks
+  while (len>20) {
+    gatt.setChar(logMessageCharId, (const uint8_t *)s, 20);
+    s += 20;
+    len -= 20;
+  }
+  gatt.setChar(logMessageCharId, (const uint8_t *)s, len);
 }
 
 const static long updateInterval = 1000;

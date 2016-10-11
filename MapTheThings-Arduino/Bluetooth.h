@@ -15,4 +15,4 @@ void setBluetoothCharData(uint8_t charID, uint8_t const data[], uint8_t size);
 void bluetoothDisconnect();
 
 void sendBatteryLevel(uint8_t level);
-
+void sendLogMessage(const char *s);

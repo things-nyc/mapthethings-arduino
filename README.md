@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/things-nyc/mapthethings-arduino.svg?branch=master)](https://travis-ci.org/things-nyc/mapthethings-arduino)
+
 # MapTheThings-Arduino
 
 The Arduino app portion of [MapTheThings](http://map.thethings.nyc), the
