@@ -20,9 +20,11 @@ extern "C"{
   void debugLogData(char *msg, uint8_t data[], uint16_t len);
 }
 
+extern "C" {
 void debugPrint(const char *msg) {
   Log.Debug(msg);
   Log.Debug(CR);
+  }
 }
 
 void debugLog(const char *msg, uint16_t value) {
