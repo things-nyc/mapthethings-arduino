@@ -112,7 +112,9 @@ CharacteristicConfigType charConfigs[] = {
 };
 
 static void logToBluetooth(const char *s) {
-  Serial.print(s);
+  if (Serial) {
+    Serial.print(s);
+  }
   sendLogMessage(s);
 }
 static char logBuffer[200];

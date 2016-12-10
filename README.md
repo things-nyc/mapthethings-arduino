@@ -14,6 +14,7 @@ global coverage map for The Things Network (TTN).
 ### Using with Arduino IDE
 - Install [Adafruit's Adafruit_BluefruitLE_nRF51 library](https://github.com/adafruit/Adafruit_BluefruitLE_nRF51) Arduino library
 - Install [The Things Network New York's version of the IBM LMIC library](https://github.com/things-nyc/arduino-lmic)
+- Install [Frank's enhanced Arduino logging library that supports redirection](https://github.com/frankleonrose/Arduino-logging-library)
 - Verify and Upload code
 
 ## Node Responsibilities
