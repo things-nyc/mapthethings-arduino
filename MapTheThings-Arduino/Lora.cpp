@@ -55,6 +55,10 @@ const lmic_pinmap lmic_pins = {
 
 static osjob_t timeoutjob;
 static void txtimeout_func(osjob_t *job) {
+  if (LMIC.opmode & OP_JOINING) {
+     // keep waiting.. and don't time out.
+     return;
+  }
   digitalWrite(LED_BUILTIN, LOW); // off
   Log.Debug(F("Transmit Timeout" CR));
   //txActive = false;
@@ -73,10 +77,13 @@ bool loraSendBytes(uint8_t *data, uint16_t len) {
         Log.Debug(F("Packet queued" CR));
         digitalWrite(LED_BUILTIN, HIGH); // off
         LMIC_setTxData2(1, data, len, 0);
+        if (! (LMIC.opmode & OP_JOINING)) {
+          // connection is up, message is queued:
+          // Timeout TX after 20 seconds
+          os_setTimedCallback(&timeoutjob, t + ms2osticks(20000), txtimeout_func);
+        }
+        return true;
     }
-  // Timeout TX after 20 seconds
-  os_setTimedCallback(&timeoutjob, t + ms2osticks(20000), txtimeout_func);
-  return true;
 }
 
 void onEvent (ev_t ev) {
