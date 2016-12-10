@@ -16,26 +16,28 @@
 
 extern "C"{
   void debugPrint(const char *msg);
-  void debugLog(char *msg, uint16_t value);
-  void debugLogData(char *msg, uint8_t data[], uint16_t len);
+  void debugLog(const char *msg, uint16_t value);
+  void debugLogData(const char *msg, uint8_t data[], uint16_t len);
 }
 
-void debugPrint(const char *msg) {
-  Log.Debug(msg);
-  Log.Debug(CR);
-}
-
-void debugLog(const char *msg, uint16_t value) {
-  Log.Debug("%s %x" CR, msg, value);
-}
-
-void debugLogData(const char *msg, uint8_t data[], uint16_t len) {
-  Log.Debug("%s: ", msg);
-  for(int i=0; i<len; ++i) {
-    Log.Debug("%x", data[i]);
+extern "C" {
+  void debugPrint(const char *msg) {
+    Log.Debug(msg);
+    Log.Debug(CR);
   }
-  Log.Debug(CR);
-}
+
+  void debugLog(const char *msg, uint16_t value) {
+    Log.Debug("%s %x" CR, msg, value);
+  }
+
+  void debugLogData(const char *msg, uint8_t data[], uint16_t len) {
+    Log.Debug("%s: ", msg);
+    for(int i=0; i<len; ++i) {
+      Log.Debug("%x", data[i]);
+    }
+    Log.Debug(CR);
+  }
+} // extern "C".
 
 #define CMD_DISCONNECT 1
 
