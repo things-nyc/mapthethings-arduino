@@ -12,31 +12,19 @@ global coverage map for The Things Network (TTN).
 RMF95 | Feather
 ----- | -------
 VIN   | 3V
-----  | ----
 GND   | GND
-----  | ---_-
 G0    | A2
-----  | ----
 CS    | A4
-----  | ----
 RST   | A5
-----  | ----
 SCK   | SCK
-----  | ----
 MOSI  | MOSI
------ | -----
 MISO  | MISO
------ | -----
 G2    | 6
-----  | ----
 G1    | 5
-----  | __----
 
 ( You can connect either to a [li-poly battery](https://www.adafruit.com/products/2750) or power via [USB cable](https://www.adafruit.com/products/2008) )
-----------
 
 ## Using the code
-
 ### Using with platformIO
 - Inside the root level directory of your copy of this repo run the following commands:
 
