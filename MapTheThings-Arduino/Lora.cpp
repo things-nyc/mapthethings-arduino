@@ -36,7 +36,7 @@ const u1_t APPSKEY[16] = { 0x43, 0x0D, 0x53, 0xB2, 0x72, 0xA6, 0x47, 0xAF, 0x5D,
 
 // LoRaWAN end-device address (DevAddr)
 // See http://thethingsnetwork.org/wiki/AddressSpace
-const u4_t DEVADDR = 0xDEADAAAA ; // <-- Change this address for every node!
+const u4_t DEVADDR = 0xFF5ED2FF ; // <-- Change this address for every node!
 
 // These callbacks are only used in over-the-air activation, so they are
 // left empty here (we cannot leave them out completely unless
