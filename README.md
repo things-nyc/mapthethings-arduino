@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.org/things-nyc/mapthethings-arduino.svg?branch=master)](https://travis-ci.org/things-nyc/mapthethings-arduino)
 
+This is a fork of a section of [**The Things Network New York's**](https://github.com/things-nyc) **Map The Things app** that was developed primarily by [Frank Leon Rose](https://github.com/frankleonrose). Huge thanks to **Frank** for his hard work and ongoing patience, as well as to [Terry Moore](https://github.com/terrillmoore), [Chris Merck](https://github.com/chrismerck), [Mimi Flynn](https://github.com/mimiflynn), and [Manny Tsarnas](https://github.com/etsarnas) for their ongoing efforts with the software and harware components. Please fork the [master repos](https://github.com/things-nyc) and lend a hand. This and the other related **Map The Things** repos are under active development.
+
 # MapTheThings-Arduino
 
 The Arduino app portion of [MapTheThings](http://map.thethings.nyc), the
