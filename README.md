@@ -9,6 +9,8 @@ global coverage map for The Things Network (TTN).
 
 ### Using [RFM95 LoRa Breakout](https://www.adafruit.com/product/3072) and [Feather M0 Bluefruit](https://www.adafruit.com/product/2995)
 - [LoRa transceiver pins are defined in software here](https://github.com/forrestfiller/mapthethings-arduino/blob/9658f6d9188a7f15bafe98ab11a1953692ebf456/MapTheThings-Arduino/Lora.cpp#L53)
+
+
 RMF95 | Feather
 ----- | -------
 VIN   | 3V
