@@ -13,7 +13,7 @@ global coverage map for The Things Network (TTN).
 - [LoRa transceiver pins are defined in software here](https://github.com/things-nyc/mapthethings-arduino/blob/b47e33881d88afeec336cf7f758cd791c54c9a01/MapTheThings-Arduino/Lora.cpp#L49)
 
 
-RMF95 | Feather
+RFM95 | Feather
 ----- | -------
 VIN   | 3V
 GND   | GND
@@ -33,7 +33,7 @@ G1    | 5
 
 ---
 
-In lieu of the above breakout board, you could alternatively use the [LoRa Radio Featherwing](https://www.adafruit.com/products/3231) in conjunction with the above Bluefruit. You'll want to solder up the connects like so:
+In lieu of the above breakout board, you could alternatively use the [LoRa Radio Featherwing](https://www.adafruit.com/products/3231) in conjunction with the above Bluefruit. You'll want to solder up the connections like so:
 
 
 ![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/feather-radioWing-front-web.jpg "image showing front of a lora radio featherwing")
