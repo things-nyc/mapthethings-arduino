@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/things-nyc/mapthethings-arduino.svg?branch=master)](https://travis-ci.org/things-nyc/mapthethings-arduino)
 
-This is a fork of a section of [**The Things Network New York's**](https://github.com/things-nyc) **Map The Things app** that was developed primarily by [Frank Leon Rose](https://github.com/frankleonrose). Huge thanks to **Frank** for his hard work and ongoing patience, as well as to [Terry Moore](https://github.com/terrillmoore), [Chris Merck](https://github.com/chrismerck), [Mimi Flynn](https://github.com/mimiflynn), and [Manny Tsarnas](https://github.com/etsarnas) for their ongoing efforts with the software and harware components. Please fork the [master repos](https://github.com/things-nyc) and lend a hand. This and the other related **Map The Things** repos are under active development.
+This repository is a component of [**The Things Network New York's**](https://github.com/things-nyc) **Map The Things app** that was developed primarily by [Frank Leon Rose](https://github.com/frankleonrose). Huge thanks to **Frank** for his hard work and ongoing patience, as well as to [Terry Moore](https://github.com/terrillmoore), [Chris Merck](https://github.com/chrismerck), [Mimi Flynn](https://github.com/mimiflynn), and [Manny Tsarnas](https://github.com/etsarnas) for their ongoing efforts with the software and hardware components. Please fork the [master repos](https://github.com/things-nyc) and lend a hand if you identify areas for improvement or wish to create new features. This and the other related **Map The Things** repos are under active development.
 
 # MapTheThings-Arduino
 
@@ -18,8 +18,8 @@ RFM95 | Feather
 VIN   | 3V
 GND   | GND
 G0    | A2
-CS    | A4
-RST   | A5
+CS    | A5
+RST   | A4
 SCK   | SCK
 MOSI  | MOSI
 MISO  | MISO
@@ -29,11 +29,12 @@ G1    | 5
 ( You can connect either to a [li-poly battery](https://www.adafruit.com/products/2750) or power via [USB cable](https://www.adafruit.com/products/2008) )
 
 
-![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/assembled-on-breadboard-web.jpg "assembled map the things node")
+![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/completed-node.jpg "assembled map the things node")
 
----
+![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/feather_M0_bluefruit_adafruit_products_2995_pinout_v1_1.jpg "feather M0 bluefruit")
 
-In lieu of the above breakout board, you could alternatively use the [LoRa Radio Featherwing](https://www.adafruit.com/products/3231) in conjunction with the above Bluefruit. You'll want to solder up the connections like so:
+
+In lieu of the above breakout board, you could alternatively use the [LoRa Radio Featherwing](https://www.adafruit.com/products/3231) in conjunction with the [Feather M0 Bluefruit](https://www.adafruit.com/product/2995). You'll want to solder up the connections like so:
 
 
 ![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/feather-radioWing-front-web.jpg "image showing front of a lora radio featherwing")
