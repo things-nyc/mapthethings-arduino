@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.org/things-nyc/mapthethings-arduino.svg?branch=master)](https://travis-ci.org/things-nyc/mapthethings-arduino)
 
-This repository is a component of [**The Things Network New York's**](https://github.com/things-nyc) **Map The Things app** that was developed primarily by [Frank Leon Rose](https://github.com/frankleonrose). Huge thanks to **Frank** for his hard work and ongoing patience, as well as to [Terry Moore](https://github.com/terrillmoore), [Chris Merck](https://github.com/chrismerck), [Mimi Flynn](https://github.com/mimiflynn), and [Manny Tsarnas](https://github.com/etsarnas) for their ongoing efforts with the software and hardware components. Please fork the [master repos](https://github.com/things-nyc) and lend a hand if you identify areas for improvement or wish to create new features. This and the other related **Map The Things** repos are under active development.
+This repository is a component of [**The Things Network New York's**](https://github.com/things-nyc) **Map The Things app** that was developed primarily by [Frank Leon Rose](https://github.com/frankleonrose). Huge thanks to **Frank** for his hard work and ongoing patience, as well as to [Terry Moore](https://github.com/terrillmoore), [Chris Merck](https://github.com/chrismerck), [Mimi Flynn](https://github.com/mimiflynn), [Manny Tsarnas](https://github.com/etsarnas), and [Forrest Filler](https://github.com/forrestfiller) for their ongoing efforts with the software and hardware components. Please fork the [master repos](https://github.com/things-nyc) and lend a hand if you identify areas for improvement or wish to create new features. This and the other related **Map The Things** repos are under active development.
 
 # MapTheThings-Arduino
 
@@ -30,6 +30,8 @@ G1    | 5
 
 
 ![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/completed-node.jpg "assembled map the things node")
+
+Here is [Adafruit's](https://github.com/adafruit) schematic for their Bluefruit module:
 
 ![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/feather_M0_bluefruit_adafruit_products_2995_pinout_v1_1.jpg "feather M0 bluefruit")
 
