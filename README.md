@@ -61,6 +61,7 @@ In lieu of the above breakout board, you could alternatively use the [LoRa Radio
 - Respond to scan from a BLE Center (the MapTheThings-iOS app)
 - Serve LoRa configuration, status, and responses as BLE characteristics
 - Accept LoRa configuration and transmission commands as BLE characteristic
+- Store device EUI and sequence number in NVRAM
 
 ## License
 Source code for Map The Things is released under the MIT License,
