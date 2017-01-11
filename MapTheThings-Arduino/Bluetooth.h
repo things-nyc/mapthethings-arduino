@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 typedef void (*WriteCharacteristicCallbackFn) (uint8_t[], uint16_t);
 
 typedef struct {
@@ -16,3 +18,8 @@ void bluetoothDisconnect();
 
 void sendBatteryLevel(uint8_t level);
 void sendLogMessage(const char *s);
+
+bool writeNVInt(uint8_t offset, int32_t number);
+bool writeNVBytes(uint8_t offset, uint8_t *bytes, uint8_t length);
+bool readNVInt(uint8_t offset, int32_t *number);
+bool readNVBytes(uint8_t offset, uint8_t *bytes, uint8_t length);
