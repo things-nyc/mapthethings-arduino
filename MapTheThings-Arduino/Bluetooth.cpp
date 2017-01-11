@@ -101,6 +101,7 @@ void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
 
 int32_t loraServiceId;
 int32_t loraSendCharId;
+int32_t loraTxResultCharId;
 
 int32_t logServiceId;
 int32_t logMessageCharId;
@@ -209,6 +210,13 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1830"), &loraServiceId);
   if (! success) {
     Log.Error(F("Could not add LoRa service" CR));
+    return;
+  }
+
+  // 0x10 notify to bluetooth app only
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2ADA,PROPERTIES=0x10,MIN_LEN=1,MAX_LEN=16,DESCRIPTION=TX Result"), &loraTxResultCharId);
+  if (! success) {
+    Log.Error(F("Could not add TX Result characteristic" CR));
     return;
   }
 
@@ -327,6 +335,20 @@ void sendBatteryLevel(uint8_t level) {
   ble.println(level, HEX);
 
   waitForOK("Send battery level");
+}
+
+void sendTxResult(uint8_t bleSeq, uint16_t error, uint32_t seq_no) {
+  // 8bit format, 8bit ble_seq, 16bit error, 32bit seq_no
+  uint8_t buffer[8];
+  #define TX_RESULT_FORMAT_V1 0x01
+  buffer[0] = TX_RESULT_FORMAT_V1;
+  buffer[1] = bleSeq;
+  memcpy(&buffer[2*sizeof(uint8_t)], (uint8_t *)&error, sizeof(error));
+  memcpy(&buffer[2*sizeof(uint8_t)+sizeof(uint16_t)], (uint8_t *)&seq_no, sizeof(seq_no));
+
+  bool result = gatt.setChar(loraTxResultCharId, buffer, sizeof(buffer));
+
+  logResult(result, "sendTxResult");
 }
 
 void sendLogMessage(const char *s) {

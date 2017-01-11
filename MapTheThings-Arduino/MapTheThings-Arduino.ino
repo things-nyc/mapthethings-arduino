@@ -54,6 +54,7 @@ PersistentSettings settings;
 // Otherwise, this value connects a sendPacket request with tx result notification
 static struct {
   bool active;
+  u1_t bleSeq;
 } CurrentTx = {false, 0};
 
 extern "C" {
@@ -89,15 +90,25 @@ void sendCommandCallback(uint8_t data[], uint16_t len) {
   }
 }
 
-void sendPacketCallback(uint8_t data[], uint16_t len) {
+void enqueuePacket(uint8_t bleSeq, uint8_t data[], uint16_t len) {
+  debugLog("sendPacket with BLE seq: ", bleSeq);
   debugLogData("sendPacket: ", data, len);
   if (!CurrentTx.active) {
     CurrentTx.active = true;
+    CurrentTx.bleSeq = bleSeq;
     loraSendBytes(data, len);
   }
   else {
     debugPrint("Send ignored - active transmission not completed");
   }
+}
+void sendPacketCallback(uint8_t data[], uint16_t len) {
+  enqueuePacket(0, data, len);
+}
+
+void sendPacketWithAckCallback(uint8_t data[], uint16_t len) {
+  // Includes ble seq as first byte of packet. Don't send that out.
+  enqueuePacket(data[0], data+1, len-1);
 }
 
 void assignDevAddrCallback(uint8_t data[], uint16_t len) {
@@ -171,6 +182,12 @@ CharacteristicConfigType charConfigs[] = {
   UNINITIALIZED,
   "AT+GATTADDCHAR=UUID=0x2AD5,PROPERTIES=0x0A,MIN_LEN=1,MAX_LEN=1,DESCRIPTION=SF,VALUE=10",
   assignSpreadingFactorCallback
+},
+#define GattSendAckdPacket (charConfigs[9])
+{
+  UNINITIALIZED,
+  "AT+GATTADDCHAR=UUID=0x2ADB,PROPERTIES=0x08,MIN_LEN=1,MAX_LEN=20,DATATYPE=2,DESCRIPTION=Send acknowledged packet",
+  sendPacketWithAckCallback
 },
 };
 
@@ -260,6 +277,9 @@ void onTransmit(uint16_t error, uint32_t tx_seq_no, u1_t *received, u1_t length)
       settings.seq_no = tx_seq_no + 1;
       debugLog("Successful transmission. Storing NEXT lora seq:", settings.seq_no);
       writeNVInt(offset(settings, seq_no), settings.seq_no);
+
+      debugLog("Successful transmission. Returning BLE seq:", CurrentTx.bleSeq);
+      sendTxResult(CurrentTx.bleSeq, error, tx_seq_no);
     }
   }
 }
