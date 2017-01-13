@@ -5,9 +5,51 @@
 The Arduino app portion of [MapTheThings](http://map.thethings.nyc), the
 global coverage map for The Things Network (TTN).
 
-## Using the code
+**Map The Things app** that was developed primarily by [Frank Leon Rose](https://github.com/frankleonrose).
+Thanks to the rest of the Thing New York team, especially [Terry Moore](https://github.com/terrillmoore) and [Forrest Filler](https://github.com/forrestfiller) for their contributions to this repo. 
 
+Please fork the [master repos](https://github.com/things-nyc) and lend a hand. This and the other related **Map The Things** repos are under active development.
+
+## Hardware Wiring
+
+### Using [RFM95 LoRa Breakout](https://www.adafruit.com/product/3072) and [Feather M0 Bluefruit](https://www.adafruit.com/product/2995)
+- [LoRa transceiver pins are defined in software here](https://github.com/things-nyc/mapthethings-arduino/blob/b47e33881d88afeec336cf7f758cd791c54c9a01/MapTheThings-Arduino/Lora.cpp#L49)
+
+
+RFM95 | Feather
+----- | -------
+VIN   | 3V
+GND   | GND
+G0    | A2
+CS    | A5
+RST   | A4
+SCK   | SCK
+MOSI  | MOSI
+MISO  | MISO
+G2    | 6
+G1    | 5
+
+( You can connect either to a [li-poly battery](https://www.adafruit.com/products/2750) or power via [USB cable](https://www.adafruit.com/products/2008) )
+
+
+![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/assembled-on-breadboard-web.jpg "assembled map the things node")
+
+---
+
+In lieu of the above breakout board, you could alternatively use the [LoRa Radio Featherwing](https://www.adafruit.com/products/3231) in conjunction with the above Bluefruit. You'll want to solder up the connections like so:
+
+
+![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/feather-radioWing-front-web.jpg "image showing front of a lora radio featherwing")
+
+
+
+![alt text](https://github.com/forrestfiller/mapthethings-arduino/blob/master/images/feather-radioWing-rear-web.jpg "image showing rear of a lora radio featherwing")
+
+
+## Using the code
 ### Using with platformIO
+- Inside the root level directory of your copy of this repo run the following commands:
+
 - ```platformio run``` (to install libraries and build code)
 - ```platformio upload``` (to install code on a device)
 

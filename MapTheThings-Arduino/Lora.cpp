@@ -16,10 +16,6 @@
        config.h in the lmic library to set it.
 #endif
 
-// These callbacks are only used in over-the-air activation, so they are
-// left empty here (we cannot leave them out completely unless
-// DISABLE_JOIN is set in config.h, otherwise the linker will complain).
-
 // Pin mapping
 const lmic_pinmap lmic_pins = {
     .nss = 19,
@@ -45,20 +41,24 @@ static u1_t join_appeui[8];
 static u1_t join_deveui[8];
 
 void os_getArtEui (u1_t* buf) {
-  // debugLogData("Asking for AppEUI", settings.AppEUI, sizeof(settings.AppEUI));
+  debugLogData("Asking for AppEUI", join_appeui, sizeof(join_appeui));
   memcpy(buf, join_appeui, sizeof(join_appeui));
 }
 void os_getDevEui (u1_t* buf) {
-  // debugLogData("Asking for DevEUI", settings.DevEUI, sizeof(settings.DevEUI));
+  debugLogData("Asking for DevEUI", join_deveui, sizeof(join_deveui));
   memcpy(buf, join_deveui, sizeof(join_deveui));
 }
 void os_getDevKey (u1_t* buf) {
-  // debugLogData("Asking for AppKey", settings.AppKey, sizeof(settings.AppKey));
+  debugLogData("Asking for AppKey", join_appkey, sizeof(join_appkey));
   memcpy(buf, join_appkey, sizeof(join_appkey));
 }
 
 static osjob_t timeoutjob;
 static void txtimeout_func(osjob_t *job) {
+  if (LMIC.opmode & OP_JOINING) {
+     // keep waiting.. and don't time out.
+     return;
+  }
   digitalWrite(LED_BUILTIN, LOW); // off
   Log.Debug(F("Transmit Timeout" CR));
   //txActive = false;
@@ -81,10 +81,13 @@ bool loraSendBytes(uint8_t *data, uint16_t len) {
         Log.Debug(F("Packet queued" CR));
         digitalWrite(LED_BUILTIN, HIGH); // off
         LMIC_setTxData2(1, data, len, 0);
+        if (! (LMIC.opmode & OP_JOINING)) {
+          // connection is up, message is queued:
+          // Timeout TX after 20 seconds
+          os_setTimedCallback(&timeoutjob, t + ms2osticks(20000), txtimeout_func);
+        }
+        return true;
     }
-  // Timeout TX after 20 seconds
-  os_setTimedCallback(&timeoutjob, t + ms2osticks(20000), txtimeout_func);
-  return true;
 }
 
 void onEvent (ev_t ev) {
@@ -171,7 +174,13 @@ void onEvent (ev_t ev) {
         case EV_LINK_ALIVE:
             Log.Debug(F("EV_LINK_ALIVE"));
             break;
-         default:
+        case EV_SCAN_FOUND:
+            Log.Debug(F("EV_SCAN_FOUND"));
+            break;
+        case EV_TXSTART:
+            Log.Debug(F("EV_TXSTART"));
+            break;
+        default:
             Log.Debug(F("Unknown event: %d"), (int)ev);
             break;
     }
@@ -246,7 +255,12 @@ void loraJoin(uint32_t seq_no, u1_t *appkey, u1_t *appeui, u1_t *deveui, JoinRes
 
   configureLora(seq_no);
 
-  LMIC_startJoining();
+  if (LMIC_startJoining()) {
+    debugPrint("Started joining.");
+  }
+  else {
+    debugPrint("Error: Expected to start joining, but did not!");
+  }
 
   mode = ReadyToJoin;
 }
