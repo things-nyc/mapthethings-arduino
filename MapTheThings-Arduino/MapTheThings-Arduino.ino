@@ -9,16 +9,26 @@
  *
  *******************************************************************************/
 
- #if 1 // Defining ABP parameters statically
- #define APPSKEY { 0x43, 0x0D, 0x53, 0xB2, 0x72, 0xA6, 0x47, 0xAF, 0x5D, 0xFF, 0x6A, 0x16, 0x7A, 0xB7, 0x9A, 0x20 }
- #define NWKSKEY { 0x80, 0x42, 0x43, 0x64, 0x2C, 0x1E, 0x3B, 0x04, 0x36, 0x6D, 0x36, 0xC3, 0x90, 0x9F, 0xCA, 0xA2 }
- #define DEVADDR { 0xDE, 0xAD, 0xAA, 0xAA }
- #endif
- #if 0 // Defining OTAA parameters statically
- #define APPKEY { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }
- #define APPEUI { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }
- #define DEVEUI { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 }
- #endif
+// #define DEBUG_SERIAL_LOGGING
+// #define DEBUG_FORGET_SESSION_VARS
+
+#if 0 // Defining ABP parameters statically
+  // Device as part of Staging app
+  // #define APPSKEY { 0x43, 0x0D, 0x53, 0xB2, 0x72, 0xA6, 0x47, 0xAF, 0x5D, 0xFF, 0x6A, 0x16, 0x7A, 0xB7, 0x9A, 0x20 }
+  // #define NWKSKEY { 0x80, 0x42, 0x43, 0x64, 0x2C, 0x1E, 0x3B, 0x04, 0x36, 0x6D, 0x36, 0xC3, 0x90, 0x9F, 0xCA, 0xA2 }
+  // #define DEVADDR { 0xDE, 0xAD, 0xAA, 0xAA }
+  // Device as part of V2 app
+  #define APPSKEY { 0xE7, 0xD0, 0x0E, 0xB6, 0xB7, 0x8D, 0xAC, 0x42, 0x97, 0xA4, 0x18, 0xD3, 0xFC, 0x8F, 0xA2, 0x4B }
+  #define NWKSKEY { 0xCD, 0x67, 0x8D, 0x4F, 0x90, 0xAE, 0x3F, 0x16, 0x64, 0x55, 0x1E, 0x5A, 0x59, 0x68, 0x2C, 0xE6 }
+  #define DEVADDR { 0x26, 0x01, 0x2B, 0x32 }
+#endif
+#if 1 // Defining OTAA parameters statically
+  // MSB order
+  #define APPKEY { 0xA6, 0xA0, 0x44, 0xC4, 0xCF, 0x74, 0xD3, 0x73, 0xB0, 0x2C, 0xAF, 0x63, 0xA9, 0xBD, 0x9F, 0x64 }
+  // LSB order
+  #define APPEUI { 0x38, 0x1C, 0x00, 0xF0, 0x7E, 0xD5, 0xB3, 0x70 }
+  #define DEVEUI { 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00 }
+#endif
 
 #include "Lora.h"
 #include "Bluetooth.h"
@@ -111,11 +121,30 @@ void sendPacketWithAckCallback(uint8_t data[], uint16_t len) {
   enqueuePacket(data[0], data+1, len-1);
 }
 
+void saveSettingBytes(uint8_t offset, uint8_t *bytes, uint8_t length) {
+  bool success = writeNVBytes(offset, bytes, length);
+  if (!success) {
+    debugPrint("ERROR: Failed to write settings bytes!");
+    debugLog("Offset:", offset);
+    debugLog("Length:", length);
+    debugLogData("Data:", bytes, length);
+  }
+}
+
+void saveSettingValue(uint8_t offset, uint32_t value) {
+  bool success = writeNVInt(offset, value);
+  if (!success) {
+    debugPrint("ERROR: Failed to write settings value!");
+    debugLog("Offset:", offset);
+    debugLog("Value:", value);
+  }
+}
+
 void assignDevAddrCallback(uint8_t data[], uint16_t len) {
   debugLogData("assignDevAddr", data, len);
   if (len==sizeof(settings.DevAddr)) {
     memcpy(settings.DevAddr, data, sizeof(settings.DevAddr));
-    writeNVBytes(offset(settings, DevAddr), settings.DevAddr, sizeof(settings.DevAddr));
+    saveSettingBytes(offset(settings, DevAddr), settings.DevAddr, sizeof(settings.DevAddr));
     loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
   }
 }
@@ -124,7 +153,7 @@ void assignNwkSKeyCallback(uint8_t data[], uint16_t len) {
   debugLogData("assignNwkSKey", data, len);
   if (len==sizeof(settings.NwkSKey)) {
     memcpy(settings.NwkSKey, data, sizeof(settings.NwkSKey));
-    writeNVBytes(offset(settings, NwkSKey), settings.NwkSKey, sizeof(settings.NwkSKey));
+    saveSettingBytes(offset(settings, NwkSKey), settings.NwkSKey, sizeof(settings.NwkSKey));
     loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
   }
 }
@@ -133,7 +162,7 @@ void assignAppSKeyCallback(uint8_t data[], uint16_t len) {
   debugLogData("assignAppSKey", data, len);
   if (len==sizeof(settings.AppSKey)) {
     memcpy(settings.AppSKey, data, sizeof(settings.AppSKey));
-    writeNVBytes(offset(settings, AppSKey), settings.AppSKey, sizeof(settings.AppSKey));
+    saveSettingBytes(offset(settings, AppSKey), settings.AppSKey, sizeof(settings.AppSKey));
     loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
   }
 }
@@ -233,6 +262,7 @@ bool loadStaticLoraDefines(PersistentSettings &settings) {
     static_assert(sizeof(settings.AppKey) == sizeof(appkey), "APPKEY needs to be 16 bytes");
     _memcpy(settings.AppKey, appkey, sizeof(settings.AppKey));
     settings.flags |= FLAG_APP_KEY_SET;
+    debugLogData("Setting AppKey", settings.AppKey, sizeof(settings.AppKey));
     write = true;
   #endif
   #if defined(APPEUI)
@@ -240,6 +270,7 @@ bool loadStaticLoraDefines(PersistentSettings &settings) {
     static_assert(sizeof(settings.AppEUI) == sizeof(appeui), "APPEUI needs to be 8 bytes");
     _memcpy(settings.AppEUI, appeui, sizeof(settings.AppEUI));
     settings.flags |= FLAG_APP_EUI_SET;
+    debugLogData("Setting AppEUI", settings.AppEUI, sizeof(settings.AppEUI));
     write = true;
   #endif
   #if defined(DEVEUI)
@@ -247,9 +278,11 @@ bool loadStaticLoraDefines(PersistentSettings &settings) {
     static_assert(sizeof(settings.DevEUI) == sizeof(deveui), "DEVEUI needs to be 8 bytes");
     _memcpy(settings.DevEUI, deveui, sizeof(settings.DevEUI));
     settings.flags |= FLAG_DEV_EUI_SET;
+    debugLogData("Setting DevEUI", settings.DevEUI, sizeof(settings.DevEUI));
     write = true;
   #endif
 
+  debugLog("Flags: ", settings.flags);
   return write;
 }
 
@@ -260,10 +293,18 @@ void reportSessionVars() {
 }
 
 void onJoin(u1_t *appskey, u1_t *nwkskey, u1_t *devaddr) {
-  memcpy(settings.AppSKey, appskey, sizeof(settings.AppSKey));
-  memcpy(settings.NwkSKey, nwkskey, sizeof(settings.NwkSKey));
-  memcpy(settings.DevAddr, devaddr, sizeof(settings.DevAddr));
-  reportSessionVars();
+  if (appskey==NULL) {
+    debugPrint("Join failed");
+  }
+  else {
+    debugPrint("Join succeeded");
+    memcpy(settings.AppSKey, appskey, sizeof(settings.AppSKey));
+    memcpy(settings.NwkSKey, nwkskey, sizeof(settings.NwkSKey));
+    memcpy(settings.DevAddr, devaddr, sizeof(settings.DevAddr));
+    settings.flags |= FLAG_SESSION_VARS_SET;
+    reportSessionVars();
+    saveSettingBytes(0, (u1_t *)(&settings), sizeof(settings));
+  }
 }
 
 void onTransmit(uint16_t error, uint32_t tx_seq_no, u1_t *received, u1_t length) {
@@ -276,7 +317,7 @@ void onTransmit(uint16_t error, uint32_t tx_seq_no, u1_t *received, u1_t length)
       // Success!
       settings.seq_no = tx_seq_no + 1;
       debugLog("Successful transmission. Storing NEXT lora seq:", settings.seq_no);
-      writeNVInt(offset(settings, seq_no), settings.seq_no);
+      saveSettingValue(offset(settings, seq_no), settings.seq_no);
 
       debugLog("Successful transmission. Returning BLE seq:", CurrentTx.bleSeq);
       sendTxResult(CurrentTx.bleSeq, error, tx_seq_no);
@@ -298,10 +339,14 @@ void loadSettings() {
 
     if (settings.format==PERSISTENT_FORMAT_V1) {
       write = write || loadStaticLoraDefines(settings);
+      #if defined(DEBUG_FORGET_SESSION_VARS)
+      settings.flags &= ~FLAG_SESSION_VARS_SET;  // Debug erase session vars set
+      write = true;
+      #endif
     }
     if (write) {
       debugLogData("Writing updated settings", (u1_t *)(&settings), sizeof(settings));
-      writeNVBytes(0, (u1_t *)(&settings), sizeof(settings));
+      saveSettingBytes(0, (u1_t *)(&settings), sizeof(settings));
     }
   }
   else {
@@ -322,9 +367,14 @@ void loadSettings() {
 }
 
 void setup() {
-    // Log.Init(LOG_LEVEL_DEBUG, 115200);
+    #if defined(DEBUG_SERIAL_LOGGING)
+    Log.Init(LOG_LEVEL_DEBUG, 115200);
+    while (!Serial) {
+      delay(1000);
+    }
+    #else
     Log.Init(LOG_LEVEL_DEBUG, BluetoothPrinter);
-    delay(1000);
+    #endif
 
     Log.Debug(F("Starting" CR));
     digitalWrite(LED_BUILTIN, LOW); // off
