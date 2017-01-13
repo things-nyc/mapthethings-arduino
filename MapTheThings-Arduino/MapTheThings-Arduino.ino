@@ -45,10 +45,14 @@ typedef struct {
 
   uint32_t seq_no;
 
-#define FLAG_SESSION_VARS_SET (1 << 0) // Set of DevAddr, NwkSKey, and AppSKey set.
+// Flag bit #0 used to mean something. To reuse it, bump the format number.
+#define FLAG_DEV_ADDR_SET (1 << 4)
   u1_t DevAddr[4];
+#define FLAG_NWK_SKEY_SET (1 << 5)
   u1_t NwkSKey[16];
+#define FLAG_APP_SKEY_SET (1 << 6)
   u1_t AppSKey[16];
+#define FLAG_SESSION_VARS_SET (FLAG_DEV_ADDR_SET | FLAG_NWK_SKEY_SET | FLAG_APP_SKEY_SET)
 
 // Separate set flags because BLE can't send all at once
 #define FLAG_APP_KEY_SET (1 << 1)
@@ -57,6 +61,7 @@ typedef struct {
   u1_t AppEUI[8];
 #define FLAG_DEV_EUI_SET (1 << 3)
   u1_t DevEUI[8];
+#define FLAG_JOIN_VARS_SET (FLAG_APP_KEY_SET | FLAG_APP_EUI_SET | FLAG_DEV_EUI_SET)
 } PersistentSettings;
 
 PersistentSettings settings;
@@ -140,19 +145,23 @@ void saveSettingValue(uint8_t offset, uint32_t value) {
   }
 }
 
-#define AssignSessionCallback(key) \
+#define AssignSessionCallback(key, flag) \
 void assign##key##Callback(uint8_t data[], uint16_t len) { \
   debugLogData("assign" #key, data, len); \
   if (len==sizeof(settings.key)) {        \
     memcpy(settings.key, data, sizeof(settings.key)); \
     saveSettingBytes(offset(settings, key), settings.key, sizeof(settings.key)); \
-    loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr); \
+    settings.flags |= flag; \
+    saveSettingValue(offset(settings, flags), settings.flags); \
+    if ((settings.flags & FLAG_SESSION_VARS_SET)==FLAG_SESSION_VARS_SET) { \
+      loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr); \
+    } \
   } \
 }
 
-AssignSessionCallback(DevAddr)
-AssignSessionCallback(NwkSKey)
-AssignSessionCallback(AppSKey)
+AssignSessionCallback(DevAddr, FLAG_DEV_ADDR_SET)
+AssignSessionCallback(NwkSKey, FLAG_NWK_SKEY_SET)
+AssignSessionCallback(AppSKey, FLAG_APP_SKEY_SET)
 
 #define AssignAppCallback(key, flag) \
 void assign##key##Callback(uint8_t data[], uint16_t len) { \
@@ -261,19 +270,24 @@ bool loadStaticLoraDefines(PersistentSettings &settings) {
     static const PROGMEM u1_t devaddr[] = DEVADDR;
     static_assert(sizeof(settings.DevAddr) == sizeof(devaddr), "DEVADDR needs to be 4 bytes");
     _memcpy(settings.DevAddr, devaddr, sizeof(settings.DevAddr));
-  #endif
-  #if defined(APPSKEY)
-    static const PROGMEM u1_t appskey[] = APPSKEY;
-    static_assert(sizeof(settings.AppSKey) == sizeof(appskey), "APPSKEY needs to be 16 bytes");
-    _memcpy(settings.AppSKey, appskey, sizeof(settings.AppSKey));
+    settings.flags |= FLAG_DEV_ADDR_SET;
+    debugLogData("Setting DevAddr", settings.DevAddr, sizeof(settings.DevAddr));
+    write = true;
   #endif
   #if defined(NWKSKEY)
     static const PROGMEM u1_t nwkskey[] = NWKSKEY;
     static_assert(sizeof(settings.NwkSKey) == sizeof(nwkskey), "NWKSKEY needs to be 16 bytes");
     _memcpy(settings.NwkSKey, nwkskey, sizeof(settings.NwkSKey));
+    settings.flags |= FLAG_NWK_SKEY_SET;
+    debugLogData("Setting NwkSKey", settings.NwkSKey, sizeof(settings.NwkSKey));
+    write = true;
   #endif
-  #if defined(DEVADDR) && defined(APPSKEY) && defined(NWKSKEY)
-    settings.flags |= FLAG_SESSION_VARS_SET;
+  #if defined(APPSKEY)
+    static const PROGMEM u1_t appskey[] = APPSKEY;
+    static_assert(sizeof(settings.AppSKey) == sizeof(appskey), "APPSKEY needs to be 16 bytes");
+    _memcpy(settings.AppSKey, appskey, sizeof(settings.AppSKey));
+    settings.flags |= FLAG_APP_SKEY_SET;
+    debugLogData("Setting AppSKey", settings.AppSKey, sizeof(settings.AppSKey));
     write = true;
   #endif
 
@@ -374,13 +388,13 @@ void loadSettings() {
     return;
   }
 
-  if (settings.flags & FLAG_SESSION_VARS_SET) {
+  if ((settings.flags & FLAG_SESSION_VARS_SET)==FLAG_SESSION_VARS_SET) {
     debugPrint("Session vars set - initializing lora");
     loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
 
     reportSessionVars();
   }
-  else if ((settings.flags & FLAG_APP_KEY_SET) && (settings.flags & FLAG_APP_EUI_SET) && (settings.flags & FLAG_DEV_EUI_SET)) {
+  else if ((settings.flags & FLAG_JOIN_VARS_SET)==FLAG_JOIN_VARS_SET) {
     debugPrint("Join keys set - initializing lora join");
     loraJoin(settings.seq_no, settings.AppKey, settings.AppEUI, settings.DevEUI, onJoin);
   }
