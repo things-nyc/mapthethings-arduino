@@ -111,32 +111,83 @@ void sendPacketWithAckCallback(uint8_t data[], uint16_t len) {
   enqueuePacket(data[0], data+1, len-1);
 }
 
-void assignDevAddrCallback(uint8_t data[], uint16_t len) {
-  debugLogData("assignDevAddr", data, len);
-  if (len==sizeof(settings.DevAddr)) {
-    memcpy(settings.DevAddr, data, sizeof(settings.DevAddr));
-    writeNVBytes(offset(settings, DevAddr), settings.DevAddr, sizeof(settings.DevAddr));
-    loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
-  }
+#define AssignSessionCallback(key) \
+void assign##key##Callback(uint8_t data[], uint16_t len) { \
+  debugLogData("assign" #key, data, len); \
+  if (len==sizeof(settings.key)) {        \
+    memcpy(settings.key, data, sizeof(settings.key)); \
+    writeNVBytes(offset(settings, key), settings.key, sizeof(settings.key)); \
+    loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr); \
+  } \
 }
 
-void assignNwkSKeyCallback(uint8_t data[], uint16_t len) {
-  debugLogData("assignNwkSKey", data, len);
-  if (len==sizeof(settings.NwkSKey)) {
-    memcpy(settings.NwkSKey, data, sizeof(settings.NwkSKey));
-    writeNVBytes(offset(settings, NwkSKey), settings.NwkSKey, sizeof(settings.NwkSKey));
-    loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
-  }
+AssignSessionCallback(DevAddr)
+AssignSessionCallback(NwkSKey)
+AssignSessionCallback(AppSKey)
+
+#define AssignAppCallback(key) \
+void assign##key##Callback(uint8_t data[], uint16_t len) { \
+  debugLogData("assign" #key, data, len); \
+  if (len==sizeof(settings.key)) {        \
+    memcpy(settings.key, data, sizeof(settings.key)); \
+    writeNVBytes(offset(settings, key), settings.key, sizeof(settings.key)); \
+  } \
 }
 
-void assignAppSKeyCallback(uint8_t data[], uint16_t len) {
-  debugLogData("assignAppSKey", data, len);
-  if (len==sizeof(settings.AppSKey)) {
-    memcpy(settings.AppSKey, data, sizeof(settings.AppSKey));
-    writeNVBytes(offset(settings, AppSKey), settings.AppSKey, sizeof(settings.AppSKey));
-    loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
-  }
-}
+AssignAppCallback(AppKey)
+AssignAppCallback(AppEUI)
+AssignAppCallback(DevEUI)
+
+// void assignDevAddrCallback(uint8_t data[], uint16_t len) {
+//   debugLogData("assignDevAddr", data, len);
+//   if (len==sizeof(settings.DevAddr)) {
+//     memcpy(settings.DevAddr, data, sizeof(settings.DevAddr));
+//     writeNVBytes(offset(settings, DevAddr), settings.DevAddr, sizeof(settings.DevAddr));
+//     loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
+//   }
+// }
+//
+// void assignNwkSKeyCallback(uint8_t data[], uint16_t len) {
+//   debugLogData("assignNwkSKey", data, len);
+//   if (len==sizeof(settings.NwkSKey)) {
+//     memcpy(settings.NwkSKey, data, sizeof(settings.NwkSKey));
+//     writeNVBytes(offset(settings, NwkSKey), settings.NwkSKey, sizeof(settings.NwkSKey));
+//     loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
+//   }
+// }
+//
+// void assignAppSKeyCallback(uint8_t data[], uint16_t len) {
+//   debugLogData("assignAppSKey", data, len);
+//   if (len==sizeof(settings.AppSKey)) {
+//     memcpy(settings.AppSKey, data, sizeof(settings.AppSKey));
+//     writeNVBytes(offset(settings, AppSKey), settings.AppSKey, sizeof(settings.AppSKey));
+//     loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
+//   }
+// }
+//
+// void assignAppKeyCallback(uint8_t data[], uint16_t len) {
+//   debugLogData("assignAppKey", data, len);
+//   if (len==sizeof(settings.AppKey)) {
+//     memcpy(settings.AppKey, data, sizeof(settings.AppKey));
+//     writeNVBytes(offset(settings, AppKey), settings.AppKey, sizeof(settings.AppKey));
+//   }
+// }
+//
+// void assignAppEUICallback(uint8_t data[], uint16_t len) {
+//   debugLogData("assignAppEUI", data, len);
+//   if (len==sizeof(settings.AppEUI)) {
+//     memcpy(settings.AppEUI, data, sizeof(settings.AppEUI));
+//     writeNVBytes(offset(settings, AppEUI), settings.AppEUI, sizeof(settings.AppEUI));
+//   }
+// }
+//
+// void assignDevEUICallback(uint8_t data[], uint16_t len) {
+//   debugLogData("assignDevEUI", data, len);
+//   if (len==sizeof(settings.DevEUI)) {
+//     memcpy(settings.DevEUI, data, sizeof(settings.DevEUI));
+//     writeNVBytes(offset(settings, DevEUI), settings.DevEUI, sizeof(settings.DevEUI));
+//   }
+// }
 
 void assignSpreadingFactorCallback(uint8_t data[], uint16_t len) {
   if (len==1) {
