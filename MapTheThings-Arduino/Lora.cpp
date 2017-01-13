@@ -41,15 +41,15 @@ static u1_t join_appeui[8];
 static u1_t join_deveui[8];
 
 void os_getArtEui (u1_t* buf) {
-  // debugLogData("Asking for AppEUI", settings.AppEUI, sizeof(settings.AppEUI));
+  debugLogData("Asking for AppEUI", join_appeui, sizeof(join_appeui));
   memcpy(buf, join_appeui, sizeof(join_appeui));
 }
 void os_getDevEui (u1_t* buf) {
-  // debugLogData("Asking for DevEUI", settings.DevEUI, sizeof(settings.DevEUI));
+  debugLogData("Asking for DevEUI", join_deveui, sizeof(join_deveui));
   memcpy(buf, join_deveui, sizeof(join_deveui));
 }
 void os_getDevKey (u1_t* buf) {
-  // debugLogData("Asking for AppKey", settings.AppKey, sizeof(settings.AppKey));
+  debugLogData("Asking for AppKey", join_appkey, sizeof(join_appkey));
   memcpy(buf, join_appkey, sizeof(join_appkey));
 }
 
@@ -255,7 +255,12 @@ void loraJoin(uint32_t seq_no, u1_t *appkey, u1_t *appeui, u1_t *deveui, JoinRes
 
   configureLora(seq_no);
 
-  LMIC_startJoining();
+  if (LMIC_startJoining()) {
+    debugPrint("Started joining.");
+  }
+  else {
+    debugPrint("Error: Expected to start joining, but did not!");
+  }
 
   mode = ReadyToJoin;
 }
