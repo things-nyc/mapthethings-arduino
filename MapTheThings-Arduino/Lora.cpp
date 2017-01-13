@@ -174,7 +174,13 @@ void onEvent (ev_t ev) {
         case EV_LINK_ALIVE:
             Log.Debug(F("EV_LINK_ALIVE"));
             break;
-         default:
+        case EV_SCAN_FOUND:
+            Log.Debug(F("EV_SCAN_FOUND"));
+            break;
+        case EV_TXSTART:
+            Log.Debug(F("EV_TXSTART"));
+            break;
+        default:
             Log.Debug(F("Unknown event: %d"), (int)ev);
             break;
     }
