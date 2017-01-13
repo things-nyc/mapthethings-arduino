@@ -101,6 +101,7 @@ void gattCallback(int32_t index, uint8_t data[], uint16_t len) {
 
 int32_t loraServiceId;
 int32_t loraSendCharId;
+int32_t loraTxResultCharId;
 
 int32_t logServiceId;
 int32_t logMessageCharId;
@@ -110,6 +111,32 @@ int32_t deviceInfoCharId;
 
 int32_t batteryLevelServiceId;
 int32_t batteryLevelCharId;
+
+#define MAGIC_NUMBER_SIZE 4
+#define MAGIC_NUMBER 0x40DE2017 // NODE 2017
+
+bool initNVRam() {
+  int32_t magic_number = 0;
+  ble.readNVM(0, &magic_number);
+
+  if ( magic_number != MAGIC_NUMBER )
+  {
+    /* Perform a factory reset to make sure everything is in a known state */
+    Log.Debug(F("Magic not found: Performing a factory reset..." CR));
+    if ( ! ble.factoryReset() ){
+      Log.Error(F("Couldn't factory reset!"));
+      return false;
+    }
+
+    // Write data to NVM
+    Log.Debug( F("Write defined data to NVM" CR) );
+    ble.writeNVM(0 , MAGIC_NUMBER);
+  }
+  else {
+    Log.Debug(F("Magic found. OK!" CR));
+  }
+  return true;
+}
 
 /**************************************************************************/
 /*!
@@ -134,12 +161,14 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   }
   Log.Debug( F("OK!" CR) );
 
-  /* Perform a factory reset to make sure everything is in a known state */
-  Log.Debug(F("Performing a factory reset: " CR));
-  if (! ble.factoryReset() ){
-       Log.Error(F("Couldn't factory reset" CR));
-       return;
-  }
+  // if ( ! ble.factoryReset() ){
+  //   Log.Error(F("Couldn't factory reset!"));
+  //   return;
+  // }
+
+  // Looks for magic number and initializes BT and RAM if not found.
+  // Call before other setup because factoryReset will undo it all.
+  initNVRam();
 
   /* Disable command echo from Bluefruit */
   ble.echo(false);
@@ -154,7 +183,6 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
 
   /* Change the device name to make it easier to find */
   Log.Debug(F("Setting device name to 'MapTheThings':" CR));
-
   if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=MapTheThings")) ) {
     Log.Error(F("Could not set device name?" CR));
     return;
@@ -168,12 +196,27 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
     ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
   }
 
+
+  Log.Debug(F("Clearing the GATT." CR));
+  success = ble.atcommand( F("AT+GATTCLEAR") );
+  if (! success) {
+    Log.Error(F("Could not clear GATT!" CR));
+    return;
+  }
+
   /* Add the LoRa Service definition */
   /* Service ID should be 1 */
   Log.Debug(F("Adding the LoRa Service definition (UUID = 0x1830): " CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1830"), &loraServiceId);
   if (! success) {
     Log.Error(F("Could not add LoRa service" CR));
+    return;
+  }
+
+  // 0x10 notify to bluetooth app only
+  success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2ADA,PROPERTIES=0x10,MIN_LEN=1,MAX_LEN=16,DESCRIPTION=TX Result"), &loraTxResultCharId);
+  if (! success) {
+    Log.Error(F("Could not add TX Result characteristic" CR));
     return;
   }
 
@@ -262,12 +305,25 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   ble.verbose(false);
 }
 
-static void waitForOK(const char * op) {
-  if ( !ble.waitForOK() ) {
+static bool waitForOK(const char * op) {
+  if ( ble.waitForOK() ) {
+    return true;
+  }
+  else {
+    Log.Error(F("Failed to get response! "));
+    Log.Error(op);
+    Log.Error(CR);
+    return false;
+  }
+}
+
+static bool logResult(bool result, const char * op) {
+  if ( !result ) {
     Log.Error(F("Failed to get response! "));
     Log.Error(op);
     Log.Error(CR);
   }
+  return result;
 }
 
 void sendBatteryLevel(uint8_t level) {
@@ -279,6 +335,20 @@ void sendBatteryLevel(uint8_t level) {
   ble.println(level, HEX);
 
   waitForOK("Send battery level");
+}
+
+void sendTxResult(uint8_t bleSeq, uint16_t error, uint32_t seq_no) {
+  // 8bit format, 8bit ble_seq, 16bit error, 32bit seq_no
+  uint8_t buffer[8];
+  #define TX_RESULT_FORMAT_V1 0x01
+  buffer[0] = TX_RESULT_FORMAT_V1;
+  buffer[1] = bleSeq;
+  memcpy(&buffer[2*sizeof(uint8_t)], (uint8_t *)&error, sizeof(error));
+  memcpy(&buffer[2*sizeof(uint8_t)+sizeof(uint16_t)], (uint8_t *)&seq_no, sizeof(seq_no));
+
+  bool result = gatt.setChar(loraTxResultCharId, buffer, sizeof(buffer));
+
+  logResult(result, "sendTxResult");
 }
 
 void sendLogMessage(const char *s) {
@@ -294,10 +364,36 @@ void sendLogMessage(const char *s) {
   gatt.setChar(logMessageCharId, (const uint8_t *)s, len);
 }
 
-const static long updateInterval = 1000;
-static TimeoutTimer timer;
+/* Writes NV bytes with offset after magic number
+  Supports writing lengths of bytes larger than BLE_BUFSIZE
+*/
+bool writeNVBytes(uint8_t offset, uint8_t *bytes, uint8_t length) {
+  offset += MAGIC_NUMBER_SIZE;
+  bool success = true;
+  for (uint8_t i = 0; i < length; i += BLE_BUFSIZE) {
+    success = success && ble.writeNVM(offset + i, bytes + i, min(BLE_BUFSIZE, (length - i)));
+  }
+  return success;
+}
+bool writeNVInt(uint8_t offset, int32_t number) {
+  return ble.writeNVM(offset+MAGIC_NUMBER_SIZE, number);
+}
 
-/** Send randomized heart rate data every bluetoothInterval **/
+/* Reads NV bytes with offset after magic number
+  Supports reading lengths of bytes larger than BLE_BUFSIZE
+*/
+bool readNVBytes(uint8_t offset, uint8_t *bytes, uint8_t length) {
+  offset += MAGIC_NUMBER_SIZE;
+  bool success = true;
+  for (uint8_t i = 0; i < length; i += BLE_BUFSIZE) {
+    success = success && ble.readNVM(offset + i, bytes + i, min(BLE_BUFSIZE, (length - i)));
+  }
+  return success;
+}
+bool readNVInt(uint8_t offset, int32_t *number) {
+  return ble.readNVM(offset+MAGIC_NUMBER_SIZE, number);
+}
+
 void loopBluetooth(void) {
     ble.update(200);
 }

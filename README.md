@@ -1,11 +1,12 @@
 [![Build Status](https://travis-ci.org/things-nyc/mapthethings-arduino.svg?branch=master)](https://travis-ci.org/things-nyc/mapthethings-arduino)
 
-This repository is a component of [**The Things Network New York's**](https://github.com/things-nyc) **Map The Things app** that was developed primarily by [Frank Leon Rose](https://github.com/frankleonrose). Huge thanks to **Frank** for his hard work and ongoing patience, as well as to [Terry Moore](https://github.com/terrillmoore), [Chris Merck](https://github.com/chrismerck), [Mimi Flynn](https://github.com/mimiflynn), [Manny Tsarnas](https://github.com/etsarnas), and [Forrest Filler](https://github.com/forrestfiller) for their ongoing efforts with the software and hardware components. Please fork the [master repos](https://github.com/things-nyc) and lend a hand if you identify areas for improvement or wish to create new features. This and the other related **Map The Things** repos are under active development.
-
 # MapTheThings-Arduino
 
-The Arduino app portion of [MapTheThings](http://map.thethings.nyc), the
-global coverage map for The Things Network (TTN).
+This repository is the Arduino portion of [**The Things Network New York's**](https://github.com/things-nyc) [**Map The Things app**](http://map.thethings.nyc) the global coverage map for The Things Network (TTN).
+
+The app was developed primarily by [Frank Leon Rose](https://github.com/frankleonrose). Huge thanks to **Frank** for his hard work and ongoing patience, as well as to [Terry Moore](https://github.com/terrillmoore), [Chris Merck](https://github.com/chrismerck), [Mimi Flynn](https://github.com/mimiflynn), [Manny Tsarnas](https://github.com/etsarnas), and [Forrest Filler](https://github.com/forrestfiller) for their ongoing efforts with the software and hardware components.
+
+Please fork the [master repos](https://github.com/things-nyc) and lend a hand if you identify areas for improvement or wish to create new features. This and the other related **Map The Things** repos are under active development.
 
 ## Hardware Wiring
 
@@ -64,6 +65,7 @@ In lieu of the above breakout board, you could alternatively use the [LoRa Radio
 - Respond to scan from a BLE Center (the MapTheThings-iOS app)
 - Serve LoRa configuration, status, and responses as BLE characteristics
 - Accept LoRa configuration and transmission commands as BLE characteristic
+- Store device EUI and sequence number in NVRAM
 
 ## License
 Source code for Map The Things is released under the MIT License,

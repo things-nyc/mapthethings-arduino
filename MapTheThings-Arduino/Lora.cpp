@@ -16,34 +16,6 @@
        config.h in the lmic library to set it.
 #endif
 
-// LoRaWAN NwkSKey, network session key
-// This is the default Semtech key, which is used by the prototype TTN
-// network initially.
-// 2B7E151628AED2A6ABF7158809CF4F3C
-//static const PROGMEM u1_t NWKSKEY[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-
-// LoRaWAN AppSKey, application session key
-// This is the default Semtech key, which is used by the prototype TTN
-// network initially.
-//static const u1_t PROGMEM APPSKEY[16] = { 0x2B, 0x7E, 0x15, 0x16, 0x28, 0xAE, 0xD2, 0xA6, 0xAB, 0xF7, 0x15, 0x88, 0x09, 0xCF, 0x4F, 0x3C };
-//static const u4_t DEVADDR = 0x03FF0001 ; // <-- Change this address for every node!
-
-// The below NWKSKEY (in msb), APPSKEY (in msb), and DEVADDR all must be unique. Please contact The Things Network New York for more information on how to obtain your unique keys:
-
-const u1_t NWKSKEY[16] = { 0x48, 0xD6, 0x9F, 0x3D, 0x30, 0x91, 0x41, 0xE2, 0xF7, 0xBA, 0x46, 0xC8, 0xAE, 0x8A, 0x29, 0x19 };
-
-const u1_t APPSKEY[16] = { 0x53, 0x20, 0x83, 0xA2, 0xB5, 0xDB, 0x86, 0xA3, 0x4D, 0xAC, 0xA0, 0xD0, 0x9B, 0xDE, 0x1B, 0x54 };
-
-// LoRaWAN end-device address (DevAddr)
-const u4_t DEVADDR = 0x27266BDA; // <-- Change this address for every node!
-
-// These callbacks are only used in over-the-air activation, so they are
-// left empty here (we cannot leave them out completely unless
-// DISABLE_JOIN is set in config.h, otherwise the linker will complain).
-void os_getArtEui (u1_t* buf) { }
-void os_getDevEui (u1_t* buf) { }
-void os_getDevKey (u1_t* buf) { }
-
 // Pin mapping
 const lmic_pinmap lmic_pins = {
     .nss = 19,
@@ -51,6 +23,35 @@ const lmic_pinmap lmic_pins = {
     .rst = 18,
     .dio = {16, 5, 6}, // Moved dio0 from 17 because of overlapping ExtInt4 (pin6)
 };
+
+typedef enum LoraModeEnum {
+  NeedsConfiguration,   // Not enough information to do anything
+  ReadyToJoin,          // Has AppKey, AppEUI, and DevEUI
+  Ready,                // We have session vars via ABP or OTAA - communicate at will
+} LoraMode;
+
+
+static LoraMode mode = NeedsConfiguration;
+
+static JoinResultCallbackFn onJoinCb = NULL;
+static TransmitResultCallbackFn onTransmitCb = NULL;
+
+static u1_t join_appkey[16];
+static u1_t join_appeui[8];
+static u1_t join_deveui[8];
+
+void os_getArtEui (u1_t* buf) {
+  debugLogData("Asking for AppEUI", join_appeui, sizeof(join_appeui));
+  memcpy(buf, join_appeui, sizeof(join_appeui));
+}
+void os_getDevEui (u1_t* buf) {
+  debugLogData("Asking for DevEUI", join_deveui, sizeof(join_deveui));
+  memcpy(buf, join_deveui, sizeof(join_deveui));
+}
+void os_getDevKey (u1_t* buf) {
+  debugLogData("Asking for AppKey", join_appkey, sizeof(join_appkey));
+  memcpy(buf, join_appkey, sizeof(join_appkey));
+}
 
 static osjob_t timeoutjob;
 static void txtimeout_func(osjob_t *job) {
@@ -65,6 +66,10 @@ static void txtimeout_func(osjob_t *job) {
 }
 
 bool loraSendBytes(uint8_t *data, uint16_t len) {
+  if (mode!=Ready) {
+    Log.Debug(F("mode not ready, not sending" CR));
+    return false; // Did not enqueue
+  }
   ostime_t t = os_getTime();
   //os_setTimedCallback(&txjob, t + ms2osticks(100), tx_func);
   // Check if there is not a current TX/RX job running
@@ -105,32 +110,53 @@ void onEvent (ev_t ev) {
             break;
         case EV_JOINED:
             Log.Debug(F("EV_JOINED"));
+            mode = Ready;
+            if (onJoinCb) {
+              u4_t netid = 0;
+              devaddr_t devaddr = 0;
+              u1_t nwkSKey[16];
+              u1_t appSKey[16];
+              LMIC_getSessionKeys(&netid, &devaddr, nwkSKey, appSKey);
+              devaddr = __builtin_bswap32(devaddr); // Settings and Bluetooth deal with devAddr as big endian byte array
+              onJoinCb(appSKey, nwkSKey, (u1_t *)&devaddr);
+            }
             break;
         case EV_RFU1:
             Log.Debug(F("EV_RFU1"));
             break;
         case EV_JOIN_FAILED:
             Log.Debug(F("EV_JOIN_FAILED"));
+            if (onJoinCb) {
+              onJoinCb(NULL, NULL, NULL);
+            }
             break;
         case EV_REJOIN_FAILED:
             Log.Debug(F("EV_REJOIN_FAILED"));
             break;
-            break;
         case EV_TXCOMPLETE:
             os_clearCallback(&timeoutjob);
-            Log.Debug(F("EV_TXCOMPLETE (includes waiting for RX windows)"));
+            Log.Debug(F("EV_TXCOMPLETE (includes waiting for RX windows)" CR));
             digitalWrite(LED_BUILTIN, LOW); // off
+            if (onTransmitCb) {
+              Log.Debug(F("Calling transmit callback..." CR));
+              u1_t *received = NULL;
+              u1_t len = 0;
+              if (LMIC.dataLen>0) {
+                received = LMIC.frame+LMIC.dataBeg;
+                len = LMIC.dataLen;
 
-            if(LMIC.dataLen) {
-                // data received in rx slot after tx
-                Log.Debug(F("Data Received: "));
-                u1_t *p = LMIC.frame+LMIC.dataBeg;
+                // Log received data.
+                u1_t *p = received;
                 for (int i=0; i<LMIC.dataLen; ++i) {
                   Log.Debug("%x", *p++);
                 }
                 // Log.Debug("%*h", LMIC.dataLen, LMIC.frame+LMIC.dataBeg);
                 Log.Debug(CR);
+              }
+              uint32_t tx_seq_no = LMIC_getSeqnoUp()-1; // LMIC_getSeqnoUp returns the NEXT one. We want to return the one used.
+              onTransmitCb(0 /* success */, tx_seq_no, received, len);
             }
+
             break;
         case EV_LOST_TSYNC:
             Log.Debug(F("EV_LOST_TSYNC"));
@@ -148,43 +174,21 @@ void onEvent (ev_t ev) {
         case EV_LINK_ALIVE:
             Log.Debug(F("EV_LINK_ALIVE"));
             break;
-         default:
-            Log.Debug(F("Unknown event"));
+        case EV_SCAN_FOUND:
+            Log.Debug(F("EV_SCAN_FOUND"));
+            break;
+        case EV_TXSTART:
+            Log.Debug(F("EV_TXSTART"));
+            break;
+        default:
+            Log.Debug(F("Unknown event: %d"), (int)ev);
             break;
     }
     Log.Debug(CR);
 }
 
-void setupLora() {
-    #ifdef VCC_ENABLE
-    // For Pinoccio Scout boards
-    pinMode(VCC_ENABLE, OUTPUT);
-    digitalWrite(VCC_ENABLE, HIGH);
-    delay(1000);
-    #endif
-
-    // LMIC init
-    os_init();
-    // Reset the MAC state. Session and pending data transfers will be discarded.
-    LMIC_reset();
-
-    // Set static session parameters. Instead of dynamically establishing a session
-    // by joining the network, precomputed session parameters are provided.
-    #ifdef PROGMEM
-    // On AVR, these values are stored in flash and only copied to RAM
-    // once. Copy them to a temporary buffer here, LMIC_setSession will
-    // copy them into a buffer of its own again.
-    uint8_t appskey[sizeof(APPSKEY)];
-    uint8_t nwkskey[sizeof(NWKSKEY)];
-    memcpy_P(appskey, APPSKEY, sizeof(APPSKEY));
-    memcpy_P(nwkskey, NWKSKEY, sizeof(NWKSKEY));
-    LMIC_setSession (0x1, DEVADDR, nwkskey, appskey);
-    #else
-    // If not running an AVR with PROGMEM, just use the arrays directly
-    LMIC_setSession (0x1, DEVADDR, NWKSKEY, APPSKEY);
-    #endif
-
-    #if defined(CFG_eu868)
+static void configureLora(uint32_t seq_no) {
+  #if defined(CFG_eu868)
     // Set up the channels used by the Things Network, which corresponds
     // to the defaults of most gateways. Without this, only three base
     // channels from the LoRaWAN specification are used, which certainly
@@ -215,10 +219,69 @@ void setupLora() {
 
     // Set data rate and transmit power (note: txpow seems to be ignored by the library)
     LMIC_setDrTxpow(DR_SF10,20);
+
+    debugLog("Set LoRa seq no:", seq_no);
+    LMIC_setSeqnoUp(seq_no);
+}
+
+void setupLora(TransmitResultCallbackFn txcb) {
+    onTransmitCb = txcb;
+
+    #ifdef VCC_ENABLE
+    // For Pinoccio Scout boards
+    pinMode(VCC_ENABLE, OUTPUT);
+    digitalWrite(VCC_ENABLE, HIGH);
+    delay(1000);
+    #endif
 }
 
 void loopLora() {
+  if (mode!=NeedsConfiguration) {
     os_runloop_once();
+  }
+}
+
+void loraJoin(uint32_t seq_no, u1_t *appkey, u1_t *appeui, u1_t *deveui, JoinResultCallbackFn joincb) {
+  onJoinCb = joincb;
+
+  memcpy(join_appkey, appkey, sizeof(join_appkey));
+  memcpy(join_appeui, appeui, sizeof(join_appeui));
+  memcpy(join_deveui, deveui, sizeof(join_deveui));
+
+  // LMIC init
+  os_init();
+  // Reset the MAC state. Session and pending data transfers will be discarded.
+  LMIC_reset();
+
+  configureLora(seq_no);
+
+  if (LMIC_startJoining()) {
+    debugPrint("Started joining.");
+  }
+  else {
+    debugPrint("Error: Expected to start joining, but did not!");
+  }
+
+  mode = ReadyToJoin;
+}
+
+void loraSetSessionKeys(uint32_t seq_no, u1_t *appskey, u1_t *nwkskey, u1_t *devaddr) {
+  debugLogData("Devaddr: ", devaddr, 4);
+  debugLogData("appskey", appskey, 16);
+  debugLogData("nwkskey", nwkskey, 16);
+
+  // LMIC init
+  os_init();
+  // Reset the MAC state. Session and pending data transfers will be discarded.
+  LMIC_reset();
+
+  devaddr_t da = *(devaddr_t *)devaddr;
+  da = __builtin_bswap32(da); // Settings and Bluetooth deal with devAddr as big endian byte array
+  LMIC_setSession(0x1 /* TTN_NETWORK_ID */, da, nwkskey, appskey);
+
+  configureLora(seq_no);
+
+  mode = Ready;
 }
 
 void loraSetSF(uint sf) {
