@@ -228,6 +228,24 @@ CharacteristicConfigType charConfigs[] = {
   "AT+GATTADDCHAR=UUID=0x2AD4,PROPERTIES=0x0A,MIN_LEN=16,MAX_LEN=16,DATATYPE=2,DESCRIPTION=AppSKey",
   assignAppSKeyCallback
 },
+#define GattAppKey (charConfigs[5])
+{
+  UNINITIALIZED,
+  "AT+GATTADDCHAR=UUID=0x2AD7,PROPERTIES=0x0A,MIN_LEN=16,MAX_LEN=16,DATATYPE=2,DESCRIPTION=AppKey",
+  assignAppKeyCallback
+},
+#define GattAppEUI (charConfigs[6])
+{
+  UNINITIALIZED,
+  "AT+GATTADDCHAR=UUID=0x2AD8,PROPERTIES=0x0A,MIN_LEN=8,MAX_LEN=8,DATATYPE=2,DESCRIPTION=AppEUI",
+  assignAppEUICallback
+},
+#define GattDevEUI (charConfigs[7])
+{
+  UNINITIALIZED,
+  "AT+GATTADDCHAR=UUID=0x2AD9,PROPERTIES=0x0A,MIN_LEN=8,MAX_LEN=8,DATATYPE=2,DESCRIPTION=DevEUI",
+  assignDevEUICallback
+},
 #define GattSF (charConfigs[8])
 {
   UNINITIALIZED,
@@ -369,6 +387,15 @@ void loadSettings() {
   else if ((settings.flags & FLAG_APP_KEY_SET) && (settings.flags & FLAG_APP_EUI_SET) && (settings.flags & FLAG_DEV_EUI_SET)) {
     debugPrint("Join keys set - initializing lora join");
     loraJoin(settings.seq_no, settings.AppKey, settings.AppEUI, settings.DevEUI, onJoin);
+  }
+  if (settings.flags & FLAG_APP_KEY_SET) {
+    setBluetoothCharData(GattAppKey.charId, settings.AppKey, sizeof(settings.AppKey));
+  }
+  if (settings.flags & FLAG_APP_EUI_SET) {
+    setBluetoothCharData(GattAppEUI.charId, settings.AppEUI, sizeof(settings.AppEUI));
+  }
+  if (settings.flags & FLAG_DEV_EUI_SET) {
+    setBluetoothCharData(GattDevEUI.charId, settings.DevEUI, sizeof(settings.DevEUI));
   }
 }
 
