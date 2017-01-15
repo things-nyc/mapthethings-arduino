@@ -163,6 +163,8 @@ AssignSessionCallback(DevAddr, FLAG_DEV_ADDR_SET)
 AssignSessionCallback(NwkSKey, FLAG_NWK_SKEY_SET)
 AssignSessionCallback(AppSKey, FLAG_APP_SKEY_SET)
 
+void onJoin(u1_t *appskey, u1_t *nwkskey, u1_t *devaddr);
+
 #define AssignAppCallback(key, flag) \
 void assign##key##Callback(uint8_t data[], uint16_t len) { \
   debugLogData("assign" #key, data, len); \
@@ -171,6 +173,9 @@ void assign##key##Callback(uint8_t data[], uint16_t len) { \
     saveSettingBytes(offset(settings, key), settings.key, sizeof(settings.key)); \
     settings.flags |= flag; \
     saveSettingValue(offset(settings, flags), settings.flags); \
+    if ((settings.flags & FLAG_JOIN_VARS_SET)==FLAG_JOIN_VARS_SET) { \
+      loraJoin(settings.seq_no, settings.AppKey, settings.AppEUI, settings.DevEUI, onJoin); \
+    } \
   } \
 }
 
