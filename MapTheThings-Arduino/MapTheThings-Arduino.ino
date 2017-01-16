@@ -270,54 +270,35 @@ bool loadStaticLoraDefines(PersistentSettings &settings) {
   #else
     #define _memcpy memcpy
   #endif
-  #if defined(DEVADDR)
-    static const PROGMEM u1_t devaddr[] = DEVADDR;
-    static_assert(sizeof(settings.DevAddr) == sizeof(devaddr), "DEVADDR needs to be 4 bytes");
-    _memcpy(settings.DevAddr, devaddr, sizeof(settings.DevAddr));
-    settings.flags |= FLAG_DEV_ADDR_SET;
-    debugLogData("Setting DevAddr", settings.DevAddr, sizeof(settings.DevAddr));
+
+  #define SIZE_STRING(x) #x
+  #define STATIC_INIT(bytes, name, flag) \
+    static const PROGMEM u1_t name[] = bytes; \
+    static_assert(sizeof(settings.name) == sizeof(name), "DEVADDR needs to be " SIZE_STRING(sizeof(settings.name)) " bytes"); \
+    _memcpy(settings.name, name, sizeof(settings.name)); \
+    settings.flags |= flag; \
+    Log.Info(F("Overriding " #name " with static initializer: " #bytes CR)); \
+    debugLogData("Static " #name, settings.name, sizeof(settings.name)); \
     write = true;
+
+  #if defined(DEVADDR)
+    STATIC_INIT(DEVADDR, DevAddr, FLAG_DEV_ADDR_SET)
   #endif
   #if defined(NWKSKEY)
-    static const PROGMEM u1_t nwkskey[] = NWKSKEY;
-    static_assert(sizeof(settings.NwkSKey) == sizeof(nwkskey), "NWKSKEY needs to be 16 bytes");
-    _memcpy(settings.NwkSKey, nwkskey, sizeof(settings.NwkSKey));
-    settings.flags |= FLAG_NWK_SKEY_SET;
-    debugLogData("Setting NwkSKey", settings.NwkSKey, sizeof(settings.NwkSKey));
-    write = true;
+    STATIC_INIT(NWKSKEY, NwkSKey, FLAG_NWK_SKEY_SET)
   #endif
   #if defined(APPSKEY)
-    static const PROGMEM u1_t appskey[] = APPSKEY;
-    static_assert(sizeof(settings.AppSKey) == sizeof(appskey), "APPSKEY needs to be 16 bytes");
-    _memcpy(settings.AppSKey, appskey, sizeof(settings.AppSKey));
-    settings.flags |= FLAG_APP_SKEY_SET;
-    debugLogData("Setting AppSKey", settings.AppSKey, sizeof(settings.AppSKey));
-    write = true;
+    STATIC_INIT(APPSKEY, AppSKey, FLAG_APP_SKEY_SET)
   #endif
 
   #if defined(APPKEY)
-    static const PROGMEM u1_t appkey[] = APPKEY;
-    static_assert(sizeof(settings.AppKey) == sizeof(appkey), "APPKEY needs to be 16 bytes");
-    _memcpy(settings.AppKey, appkey, sizeof(settings.AppKey));
-    settings.flags |= FLAG_APP_KEY_SET;
-    debugLogData("Setting AppKey", settings.AppKey, sizeof(settings.AppKey));
-    write = true;
+    STATIC_INIT(APPKEY, AppKey, FLAG_APP_KEY_SET)
   #endif
   #if defined(APPEUI)
-    static const PROGMEM u1_t appeui[] = APPEUI;
-    static_assert(sizeof(settings.AppEUI) == sizeof(appeui), "APPEUI needs to be 8 bytes");
-    _memcpy(settings.AppEUI, appeui, sizeof(settings.AppEUI));
-    settings.flags |= FLAG_APP_EUI_SET;
-    debugLogData("Setting AppEUI", settings.AppEUI, sizeof(settings.AppEUI));
-    write = true;
+    STATIC_INIT(APPEUI, AppEUI, FLAG_APP_EUI_SET)
   #endif
   #if defined(DEVEUI)
-    static const PROGMEM u1_t deveui[] = DEVEUI;
-    static_assert(sizeof(settings.DevEUI) == sizeof(deveui), "DEVEUI needs to be 8 bytes");
-    _memcpy(settings.DevEUI, deveui, sizeof(settings.DevEUI));
-    settings.flags |= FLAG_DEV_EUI_SET;
-    debugLogData("Setting DevEUI", settings.DevEUI, sizeof(settings.DevEUI));
-    write = true;
+    STATIC_INIT(DEVEUI, DevEUI, FLAG_DEV_EUI_SET)
   #endif
 
   debugLog("Following static initialization, Flags: ", settings.flags);
