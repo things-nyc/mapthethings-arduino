@@ -178,6 +178,11 @@ bool setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount, bool ve
     ble.info();
   }
 
+  if ( !ble.isVersionAtLeast(MINIMUM_FIRMWARE_VERSION) ) {
+    Log.Error(F("MapTheThings requires Bluefruit firmware version " MINIMUM_FIRMWARE_VERSION "." CR));
+    Log.Error(F("Perform update using Bluefruit LE Connect. See https://learn.adafruit.com/introducing-adafruit-ble-bluetooth-low-energy-friend/dfu-on-ios" CR));
+    return false;
+  }
 
   // this line is particularly required for Flora, but is a good idea
   // anyways for the super long lines ahead!
