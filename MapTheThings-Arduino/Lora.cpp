@@ -16,13 +16,26 @@
        config.h in the lmic library to set it.
 #endif
 
-// Pin mapping
+/* 
+ * Pin mapping  
+ *  adjusted to conform to pinout shown in image
+ *  from this repo's image.
+ */
 const lmic_pinmap lmic_pins = {
+#if 1
+    .nss = 6 /*feather wing pin D*/,
+    .rxtx = LMIC_UNUSED_PIN,
+    .rst = 5/*feather wing pin E*/,
+    .dio = {12/*feather wing pin above A*/, 11/*feather wing pin A*/, 10 /*feather wing pin B*/},
+#else
+    // alternate pinout
     .nss = 19,
     .rxtx = LMIC_UNUSED_PIN,
     .rst = 18,
-    .dio = {16, 5, 6}, // Moved dio0 from 17 because of overlapping ExtInt4 (pin6)
+    .dio = {16,5,6},
+#endif
 };
+
 
 typedef enum LoraModeEnum {
   NeedsConfiguration,   // Not enough information to do anything
