@@ -144,7 +144,7 @@ bool initNVRam() {
             automatically on startup)
 */
 /**************************************************************************/
-void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
+bool setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount, bool verbose)
 {
   charConfigs = cconfigs;
   charConfigsCount = cccount;
@@ -152,14 +152,13 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   boolean success;
 
   /* Initialise the module */
-  Log.Debug(F("Initialising the Bluefruit LE module: " CR));
+  Log.Info(F("Initialising the Bluefruit LE module" CR));
 
-  if ( !ble.begin(!VERBOSE_MODE) )
+  if ( !ble.begin(verbose) )
   {
     Log.Error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?" CR));
-    return;
+    return false;
   }
-  Log.Debug( F("OK!" CR) );
 
   // if ( ! ble.factoryReset() ){
   //   Log.Error(F("Couldn't factory reset!"));
@@ -173,9 +172,12 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   /* Disable command echo from Bluefruit */
   ble.echo(false);
 
-  Log.Debug("Requesting Bluefruit info:" CR);
-  /* Print Bluefruit information */
-  ble.info();
+  if (verbose) {
+    Log.Debug("Requesting Bluefruit info:" CR);
+    /* Print Bluefruit information */
+    ble.info();
+  }
+
 
   // this line is particularly required for Flora, but is a good idea
   // anyways for the super long lines ahead!
@@ -185,12 +187,12 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   Log.Debug(F("Setting device name to 'MapTheThings':" CR));
   if (! ble.sendCommandCheckOK(F("AT+GAPDEVNAME=MapTheThings")) ) {
     Log.Error(F("Could not set device name?" CR));
-    return;
+    return false;
   }
 
   // LED Activity command is only supported from 0.6.6
-  if ( ble.isVersionAtLeast(MINIMUM_FIRMWARE_VERSION) )
-  {
+  #define LED_MODE_FIRMWARE_VERSION "0.6.6"
+  if ( ble.isVersionAtLeast(LED_MODE_FIRMWARE_VERSION) ) {
     // Change Mode LED Activity
     Log.Debug(F("Change LED activity to " MODE_LED_BEHAVIOUR CR));
     ble.sendCommandCheckOK("AT+HWModeLED=" MODE_LED_BEHAVIOUR);
@@ -201,7 +203,7 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   success = ble.atcommand( F("AT+GATTCLEAR") );
   if (! success) {
     Log.Error(F("Could not clear GATT!" CR));
-    return;
+    return false;
   }
 
   /* Add the LoRa Service definition */
@@ -210,14 +212,14 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1830"), &loraServiceId);
   if (! success) {
     Log.Error(F("Could not add LoRa service" CR));
-    return;
+    return false;
   }
 
   // 0x10 notify to bluetooth app only
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2ADA,PROPERTIES=0x10,MIN_LEN=1,MAX_LEN=16,DESCRIPTION=TX Result"), &loraTxResultCharId);
   if (! success) {
     Log.Error(F("Could not add TX Result characteristic" CR));
-    return;
+    return false;
   }
 
   /* Add the LoRa write characteristic */
@@ -229,7 +231,7 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
     success = ble.sendCommandWithIntReply(cconfigs[i].charDef, &cconfigs[i].charId);
     if (! success) {
       Log.Error(F("Could not add characteristic" CR));
-      return;
+      return false;
     }
   }
   Log.Debug(F("Done adding LoRa service" CR));
@@ -238,32 +240,32 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x1831"), &logServiceId);
   if (! success) {
     Log.Error(F("Could not add Logging service" CR));
-    return;
+    return false;
   }
   Log.Debug(F("Adding the log message characteristic (UUID = 0x2AD6):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2AD6,PROPERTIES=0x10,MIN_LEN=1,MAX_LEN=20"), &logMessageCharId);
   if (! success) {
     Log.Error(F("Could not add log message characteristic" CR));
-    return;
+    return false;
   }
 
   Log.Debug(F("Adding the Device Info service definition (UUID = 0x180A):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180A"), &deviceInfoServiceId);
   if (! success) {
     Log.Error(F("Could not add Device Info service" CR));
-    return;
+    return false;
   }
   Log.Debug(F("Adding the Device Info manufacturer name characteristic (UUID = 0x2A29):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A29,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=TheThingsNYC"), &deviceInfoCharId);
   if (! success) {
     Log.Error(F("Could not add Device Info manufacturer name characteristic" CR));
-    return;
+    return false;
   }
   Log.Debug(F("Adding the Device Info software version characteristic (UUID = 0x2A28):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A28,PROPERTIES=0x02,MIN_LEN=1,MAX_LEN=20,VALUE=" MAPTHETHINGS_SOFTWARE_VERSION), &deviceInfoCharId);
   if (! success) {
     Log.Error(F("Could not add Device Info software version characteristic" CR));
-    return;
+    return false;
   }
 
   // Battery service: 0x180F
@@ -272,13 +274,13 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
   success = ble.sendCommandWithIntReply( F("AT+GATTADDSERVICE=UUID=0x180F"), &batteryLevelServiceId);
   if (! success) {
     Log.Error(F("Could not add Battery level service"));
-    return;
+    return false;
   }
   Log.Debug(F("Adding the Battery level characteristic (UUID = 0x2A19):" CR));
   success = ble.sendCommandWithIntReply( F("AT+GATTADDCHAR=UUID=0x2A19,PROPERTIES=0x12,MIN_LEN=1,MAX_LEN=1,VALUE=00"), &batteryLevelCharId);
   if (! success) {
     Log.Error(F("Could not add Battery level characteristic" CR));
-    return;
+    return false;
   }
 
   /* Add the LoRa to the advertising data (needed for Nordic apps to detect the service) */
@@ -302,7 +304,8 @@ void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount)
     ble.setBleGattRxCallback(cconfigs[i].charId, gattCallback);
   }
 
-  ble.verbose(false);
+  ble.verbose(verbose);
+  return true;
 }
 
 static bool waitForOK(const char * op) {

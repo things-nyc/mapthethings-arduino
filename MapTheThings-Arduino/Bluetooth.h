@@ -11,7 +11,7 @@ typedef struct {
 #define UNINITIALIZED -100
 #define COUNT(x) (sizeof(x) / sizeof(*x))
 
-void setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount);
+bool setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount, bool verbose);
 void loopBluetooth(void);
 void bluetoothDisconnect();
 

@@ -43,7 +43,6 @@ typedef enum LoraModeEnum {
   Ready,                // We have session vars via ABP or OTAA - communicate at will
 } LoraMode;
 
-
 static LoraMode mode = NeedsConfiguration;
 
 static JoinResultCallbackFn onJoinCb = NULL;
@@ -237,7 +236,16 @@ static void configureLora(uint32_t seq_no) {
     LMIC_setSeqnoUp(seq_no);
 }
 
-void setupLora(TransmitResultCallbackFn txcb) {
+void resetLora() {
+  // LMIC init
+  os_init();
+  // Reset the MAC state. Session and pending data transfers will be discarded.
+  LMIC_reset();
+}
+
+bool setupLora(TransmitResultCallbackFn txcb) {
+    Log.Info(F("Initializing LoRa radio module" CR));
+
     onTransmitCb = txcb;
 
     #ifdef VCC_ENABLE
@@ -246,6 +254,12 @@ void setupLora(TransmitResultCallbackFn txcb) {
     digitalWrite(VCC_ENABLE, HIGH);
     delay(1000);
     #endif
+
+    // resetLora() gets called later when we have session or OTAA keys.
+    // But call it here to force initialization failure before proceeding further.
+    resetLora();
+
+    return true;
 }
 
 void loopLora() {
@@ -261,10 +275,7 @@ void loraJoin(uint32_t seq_no, u1_t *appkey, u1_t *appeui, u1_t *deveui, JoinRes
   memcpy(join_appeui, appeui, sizeof(join_appeui));
   memcpy(join_deveui, deveui, sizeof(join_deveui));
 
-  // LMIC init
-  os_init();
-  // Reset the MAC state. Session and pending data transfers will be discarded.
-  LMIC_reset();
+  resetLora();
 
   configureLora(seq_no);
 
@@ -283,10 +294,7 @@ void loraSetSessionKeys(uint32_t seq_no, u1_t *appskey, u1_t *nwkskey, u1_t *dev
   debugLogData("appskey", appskey, 16);
   debugLogData("nwkskey", nwkskey, 16);
 
-  // LMIC init
-  os_init();
-  // Reset the MAC state. Session and pending data transfers will be discarded.
-  LMIC_reset();
+  resetLora();
 
   devaddr_t da = *(devaddr_t *)devaddr;
   da = __builtin_bswap32(da); // Settings and Bluetooth deal with devAddr as big endian byte array

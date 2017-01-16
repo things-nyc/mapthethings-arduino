@@ -9,25 +9,24 @@
  *
  *******************************************************************************/
 
-// #define DEBUG_SERIAL_LOGGING
-// #define DEBUG_FORGET_SESSION_VARS
+#define LOG_LEVEL LOG_LEVEL_INFOS //  _INFOS, _DEBUG, _VERBOSE, _NOOUTPUT
+// Set to LOG_LEVEL_VERBOSE to see low level AT communication with BT module
 
-#if 0 // Defining ABP parameters statically
-  // Device as part of Staging app
-  // #define APPSKEY { 0x43, 0x0D, 0x53, 0xB2, 0x72, 0xA6, 0x47, 0xAF, 0x5D, 0xFF, 0x6A, 0x16, 0x7A, 0xB7, 0x9A, 0x20 }
-  // #define NWKSKEY { 0x80, 0x42, 0x43, 0x64, 0x2C, 0x1E, 0x3B, 0x04, 0x36, 0x6D, 0x36, 0xC3, 0x90, 0x9F, 0xCA, 0xA2 }
-  // #define DEVADDR { 0xDE, 0xAD, 0xAA, 0xAA }
-  // Device as part of V2 app
-  #define APPSKEY { 0xE7, 0xD0, 0x0E, 0xB6, 0xB7, 0x8D, 0xAC, 0x42, 0x97, 0xA4, 0x18, 0xD3, 0xFC, 0x8F, 0xA2, 0x4B }
-  #define NWKSKEY { 0xCD, 0x67, 0x8D, 0x4F, 0x90, 0xAE, 0x3F, 0x16, 0x64, 0x55, 0x1E, 0x5A, 0x59, 0x68, 0x2C, 0xE6 }
-  #define DEVADDR { 0x26, 0x01, 0x2B, 0x32 }
-#endif
-#if 1 // Defining OTAA parameters statically
-  // MSB order
-  #define APPKEY { 0xA6, 0xA0, 0x44, 0xC4, 0xCF, 0x74, 0xD3, 0x73, 0xB0, 0x2C, 0xAF, 0x63, 0xA9, 0xBD, 0x9F, 0x64 }
-  // LSB order
-  #define APPEUI { 0x38, 0x1C, 0x00, 0xF0, 0x7E, 0xD5, 0xB3, 0x70 }
-  #define DEVEUI { 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00 }
+#define DEBUG_SERIAL_LOGGING // Waits for Serial monitor before startup
+// #define DEBUG_FORGET_SESSION_VARS // Stored settings include session keys - uncomment and run once to erase
+
+// If you want to statically define ABP parameters, put them below and uncomment the lines
+// #define DEVADDR { 0x26, 0x01, 0x2B, 0x32 }
+// #define NWKSKEY { 0xCD, 0x67, 0x8D, 0x4F, 0x90, 0xAE, 0x3F, 0x16, 0x64, 0x55, 0x1E, 0x5A, 0x59, 0x68, 0x2C, 0xE6 }
+// #define APPSKEY { 0xE7, 0xD0, 0x0E, 0xB6, 0xB7, 0x8D, 0xAC, 0x42, 0x97, 0xA4, 0x18, 0xD3, 0xFC, 0x8F, 0xA2, 0x4B }
+
+// If you want to statically define ABP parameters, put them below and uncomment the lines
+// #define APPKEY /* MSB */ { 0xA6, 0xA0, 0x44, 0xC4, 0xCF, 0x74, 0xD3, 0x73, 0xB0, 0x2C, 0xAF, 0x63, 0xA9, 0xBD, 0x9F, 0x64 }
+// #define APPEUI /* LSB */ { 0x38, 0x1C, 0x00, 0xF0, 0x7E, 0xD5, 0xB3, 0x70 }
+// #define DEVEUI /* LSB */ { 0x77, 0x66, 0x55, 0x44, 0x33, 0x22, 0x11, 0x00 }
+
+#if (defined(DEVADDR) || defined(NWKSKEY) || defined(APPSKEY)) && (defined(APPKEY) || defined(APPEUI) || defined(DEVEUI))
+#error Set either ABP or OTAA parameters (or neither), but not both.
 #endif
 
 #include "Lora.h"
@@ -79,17 +78,17 @@ extern "C" {
   }
 
   void debugLog(const char *msg, uint32_t value) {
-    Log.Debug("%s %x" CR, msg, value);
+    Log.Debug(F("%s %x" CR), msg, value);
   }
 
   void debugLogData(const char *msg, uint8_t data[], uint16_t len) {
     char buffer[200+1];
-    Log.Debug("%s: " CR, msg);
-    Log.Debug("Length: %d" CR, len);
-    for(int i=0; i<min(len, sizeof(buffer)/2); ++i) {
+    Log.Debug(F("%s: " CR), msg);
+    Log.Debug(F("Length: %d" CR), len);
+    for(uint i=0; i<min(len, sizeof(buffer)/2); ++i) {
       snprintf(buffer+2*i, sizeof(buffer)-2*i, "%02x", data[i]);
     }
-    Log.Debug("%s" CR, buffer);
+    Log.Debug(F("%s" CR), buffer);
   }
 } // extern "C".
 
@@ -97,7 +96,7 @@ extern "C" {
 
 void sendCommandCallback(uint8_t data[], uint16_t len) {
   uint16_t command = *(uint16_t *)data;
-  Log.Debug("sendCommand: %d" CR, command);
+  Log.Debug(F("sendCommand: %d" CR), command);
   switch (command) {
     case CMD_DISCONNECT:
       bluetoothDisconnect();
@@ -321,7 +320,7 @@ bool loadStaticLoraDefines(PersistentSettings &settings) {
     write = true;
   #endif
 
-  debugLog("Flags: ", settings.flags);
+  debugLog("Following static initialization, Flags: ", settings.flags);
   return write;
 }
 
@@ -336,13 +335,13 @@ void onJoin(u1_t *appskey, u1_t *nwkskey, u1_t *devaddr) {
     debugPrint("Join failed");
   }
   else {
-    debugPrint("Join succeeded");
+    Log.Info(F("Join succeeded" CR));
     memcpy(settings.AppSKey, appskey, sizeof(settings.AppSKey));
     memcpy(settings.NwkSKey, nwkskey, sizeof(settings.NwkSKey));
     memcpy(settings.DevAddr, devaddr, sizeof(settings.DevAddr));
     settings.flags |= FLAG_SESSION_VARS_SET;
-    reportSessionVars();
     saveSettingBytes(0, (u1_t *)(&settings), sizeof(settings));
+    reportSessionVars();
   }
 }
 
@@ -365,6 +364,7 @@ void onTransmit(uint16_t error, uint32_t tx_seq_no, u1_t *received, u1_t length)
 }
 
 void loadSettings() {
+  Log.Info(F("Loading saved settings" CR));
   if (readNVBytes(0, (u1_t *)(&settings), sizeof(settings))) {
     debugLogData("Read bytes from NVRAM", (u1_t *)(&settings), sizeof(settings));
     // int i = offset(settings, AppEUI);
@@ -416,26 +416,38 @@ void loadSettings() {
 
 void setup() {
     #if defined(DEBUG_SERIAL_LOGGING)
-    Log.Init(LOG_LEVEL_DEBUG, 115200);
-    while (!Serial) {
-      delay(1000);
-    }
+      Log.Init(LOG_LEVEL, 115200);
+      // Wait for 15 seconds. If no Serial by then, keep going. We are not connected.
+      for (int timeout=0; timeout<15 && !Serial; ++timeout) {
+        delay(1000);
+      }
+      Log.Error(F(
+        "Important: DEBUG_SERIAL_LOGGING is set. The node will wait for a Serial monitor before executing. This is very useful for debugging." CR
+        "However, the node will wait for 15 seconds before startup when it is NOT connected to USB." CR
+        "Disable DEBUG_SERIAL_LOGGING for immediate untethered execution." CR));
     #else
-    Log.Init(LOG_LEVEL_DEBUG, BluetoothPrinter);
+      Log.Init(LOG_LEVEL, BluetoothPrinter);
     #endif
 
-    Log.Debug(F("Starting" CR));
     digitalWrite(LED_BUILTIN, LOW); // off
 
-    Log.Debug(F("setupBluetooth" CR));
-    setupBluetooth(charConfigs, COUNT(charConfigs));
-    Log.Debug(F("loadSettings" CR));
-    loadSettings();
+    bool btok = setupBluetooth(charConfigs, COUNT(charConfigs), (LOG_LEVEL==LOG_LEVEL_VERBOSE));
+    if (!btok) {
+      Log.Error(F("***** Failed to initialize Bluetooth subsystem." CR));
+    }
+    else {
+      // Load settings only if Bluetooth initializes successfully - settings are stored in BT module
+      loadSettings();
+    }
 
-    Log.Debug(F("setupLora" CR));
-    setupLora(onTransmit);
+    bool loraok = setupLora(onTransmit);
+    if (!loraok) {
+      Log.Error(F("***** Failed to initialize LoRa radio subsystem." CR));
+    }
 
-    Log.Debug(F("setup done" CR));
+    if (btok && loraok) {
+      Log.Info(F("Setup completed successfully" CR));
+    }
 }
 
 void readBatteryLevel() {
@@ -445,13 +457,13 @@ void readBatteryLevel() {
     measuredvbat *= 2;    // we divided by 2, so multiply back
     measuredvbat *= 3.3;  // Multiply by 3.3V, our reference voltage
     measuredvbat /= 1024; // convert to voltage
-    Log.Debug("VBat: %f" CR, measuredvbat);
+    Log.Debug("VBat: %f", measuredvbat);
 
     // Normalize to 0-100
     float minv = 3.2;
     float maxv = 4.2;
     int level = 100 * (measuredvbat - minv) / (maxv - minv);
-    Log.Debug("VBat int: %d" CR, level);
+    Log.Debug(" [VBat int: %d]" CR, level);
     if (level<0) {
       level = 0;
     }
