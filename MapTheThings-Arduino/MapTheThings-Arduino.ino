@@ -305,9 +305,27 @@ bool loadStaticLoraDefines(PersistentSettings &settings) {
 }
 
 void reportSessionVars() {
-  setBluetoothCharData(GattDevAddr.charId, settings.DevAddr, sizeof(settings.DevAddr));
-  setBluetoothCharData(GattNwkSKey.charId, settings.NwkSKey, sizeof(settings.NwkSKey));
-  setBluetoothCharData(GattAppSKey.charId, settings.AppSKey, sizeof(settings.AppSKey));
+  if (settings.flags & FLAG_DEV_ADDR_SET) {
+    setBluetoothCharData(GattDevAddr.charId, settings.DevAddr, sizeof(settings.DevAddr));
+  }
+  if (settings.flags & FLAG_NWK_SKEY_SET) {
+    setBluetoothCharData(GattNwkSKey.charId, settings.NwkSKey, sizeof(settings.NwkSKey));
+  }
+  if (settings.flags & FLAG_APP_SKEY_SET) {
+    setBluetoothCharData(GattAppSKey.charId, settings.AppSKey, sizeof(settings.AppSKey));
+  }
+}
+
+void reportJoinVars() {
+  if (settings.flags & FLAG_APP_KEY_SET) {
+    setBluetoothCharData(GattAppKey.charId, settings.AppKey, sizeof(settings.AppKey));
+  }
+  if (settings.flags & FLAG_APP_EUI_SET) {
+    setBluetoothCharData(GattAppEUI.charId, settings.AppEUI, sizeof(settings.AppEUI));
+  }
+  if (settings.flags & FLAG_DEV_EUI_SET) {
+    setBluetoothCharData(GattDevEUI.charId, settings.DevEUI, sizeof(settings.DevEUI));
+  }
 }
 
 void onJoin(u1_t *appskey, u1_t *nwkskey, u1_t *devaddr) {
@@ -415,15 +433,8 @@ static void loadSettings() {
     debugPrint("Join keys set - initializing lora join");
     loraJoin(settings.seq_no, settings.AppKey, settings.AppEUI, settings.DevEUI, onJoin);
   }
-  if (settings.flags & FLAG_APP_KEY_SET) {
-    setBluetoothCharData(GattAppKey.charId, settings.AppKey, sizeof(settings.AppKey));
-  }
-  if (settings.flags & FLAG_APP_EUI_SET) {
-    setBluetoothCharData(GattAppEUI.charId, settings.AppEUI, sizeof(settings.AppEUI));
-  }
-  if (settings.flags & FLAG_DEV_EUI_SET) {
-    setBluetoothCharData(GattDevEUI.charId, settings.DevEUI, sizeof(settings.DevEUI));
-  }
+  reportSessionVars();
+  reportJoinVars();
 }
 
 void setup() {
