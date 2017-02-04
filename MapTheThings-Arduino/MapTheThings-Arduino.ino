@@ -343,7 +343,38 @@ void onTransmit(uint16_t error, uint32_t tx_seq_no, u1_t *received, u1_t length)
   }
 }
 
-void loadSettings() {
+static bool checkBytesSameValue(uint8_t *bytes, uint size, uint16_t flag, uint8_t value, const char *name) {
+  bool same = true;
+  for (uint i = 0; i<size; ++i) {
+    same = same && (bytes[i]==value);
+  }
+  if (same) {
+    Log.Warn(F("Removing %s because it is all %d" CR), name, value);
+    settings.flags &= ~flag;
+  }
+  return same;
+}
+
+static bool checkValidSettings() {
+  bool write = false;
+
+  #define CHECK_BYTES(name, flag)   \
+    if (settings.flags & flag) {    \
+      write = write || checkBytesSameValue(settings.name, sizeof(settings.name), flag, 0x00, #name);  \
+      write = write || checkBytesSameValue(settings.name, sizeof(settings.name), flag, 0xFF, #name);  \
+    }
+
+  CHECK_BYTES(DevAddr, FLAG_DEV_ADDR_SET)
+  CHECK_BYTES(NwkSKey, FLAG_NWK_SKEY_SET)
+  CHECK_BYTES(AppSKey, FLAG_APP_SKEY_SET)
+  CHECK_BYTES(AppKey, FLAG_APP_KEY_SET)
+  CHECK_BYTES(AppEUI, FLAG_APP_EUI_SET)
+  CHECK_BYTES(DevEUI, FLAG_DEV_EUI_SET)
+
+  return write;
+}
+
+static void loadSettings() {
   Log.Info(F("Loading saved settings" CR));
   if (readNVBytes(0, (u1_t *)(&settings), sizeof(settings))) {
     debugLogData("Read bytes from NVRAM", (u1_t *)(&settings), sizeof(settings));
@@ -363,6 +394,7 @@ void loadSettings() {
       write = true;
       #endif
     }
+    write = write || checkValidSettings();
     if (write) {
       debugLogData("Writing updated settings", (u1_t *)(&settings), sizeof(settings));
       saveSettingBytes(0, (u1_t *)(&settings), sizeof(settings));
