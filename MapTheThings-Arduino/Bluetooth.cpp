@@ -79,6 +79,7 @@ static CharacteristicConfigType *charConfigs;
 static int32_t charConfigsCount;
 
 void setBluetoothCharData(uint8_t charID, uint8_t const data[], uint8_t size) {
+  Log.Debug("setBluetoothCharData (charID=%d)" CR, charID);
   gatt.setChar(charID, data, size);
 }
 
@@ -122,18 +123,18 @@ bool initNVRam() {
   if ( magic_number != MAGIC_NUMBER )
   {
     /* Perform a factory reset to make sure everything is in a known state */
-    Log.Debug(F("Magic not found: Performing a factory reset..." CR));
+    Log.Warn(F("Magic number not found: Performing a factory reset and clearing non-volatile memory" CR));
     if ( ! ble.factoryReset() ){
       Log.Error(F("Couldn't factory reset!"));
       return false;
     }
 
     // Write data to NVM
-    Log.Debug( F("Write defined data to NVM" CR) );
+    Log.Debug( F("Write magic number to non-volatile memory to indicate known state (%x)." CR), MAGIC_NUMBER);
     ble.writeNVM(0 , MAGIC_NUMBER);
   }
   else {
-    Log.Debug(F("Magic found. OK!" CR));
+    Log.Debug(F("Magic number found. OK!" CR));
   }
   return true;
 }
@@ -159,11 +160,6 @@ bool setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount, bool ve
     Log.Error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?" CR));
     return false;
   }
-
-  // if ( ! ble.factoryReset() ){
-  //   Log.Error(F("Couldn't factory reset!"));
-  //   return;
-  // }
 
   // Looks for magic number and initializes BT and RAM if not found.
   // Call before other setup because factoryReset will undo it all.
@@ -230,9 +226,7 @@ bool setupBluetooth(CharacteristicConfigType *cconfigs, int32_t cccount, bool ve
   /* Add the LoRa write characteristic */
   /* Chars ID for Measurement should be 1 */
   for (int i=0; i<cccount; ++i) {
-    Log.Debug(F("Adding characteristic: "));
-    Log.Debug(cconfigs[i].charDef);
-    Log.Debug(CR);
+    Log.Debug(F("Adding characteristic: %s" CR), cconfigs[i].charDef);
     success = ble.sendCommandWithIntReply(cconfigs[i].charDef, &cconfigs[i].charId);
     if (! success) {
       Log.Error(F("Could not add characteristic" CR));

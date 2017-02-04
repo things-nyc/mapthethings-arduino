@@ -83,12 +83,11 @@ extern "C" {
 
   void debugLogData(const char *msg, uint8_t data[], uint16_t len) {
     char buffer[200+1];
-    Log.Debug(F("%s: " CR), msg);
-    Log.Debug(F("Length: %d" CR), len);
+    Log.Debug(F("%s (Length: %d): "), msg, len);
     for(uint i=0; i<min(len, sizeof(buffer)/2); ++i) {
       snprintf(buffer+2*i, sizeof(buffer)-2*i, "%02x", data[i]);
     }
-    Log.Debug(F("%s" CR), buffer);
+    Log.Debug_(F("%s" CR), buffer);
   }
 } // extern "C".
 
@@ -402,7 +401,7 @@ void setup() {
       for (int timeout=0; timeout<15 && !Serial; ++timeout) {
         delay(1000);
       }
-      Log.Error(F(
+      Log.Warn(F(
         "Important: DEBUG_SERIAL_LOGGING is set. The node will wait for a Serial monitor before executing. This is very useful for debugging." CR
         "However, the node will wait for 15 seconds before startup when it is NOT connected to USB." CR
         "Disable DEBUG_SERIAL_LOGGING for immediate untethered execution." CR));
@@ -444,7 +443,7 @@ void readBatteryLevel() {
     float minv = 3.2;
     float maxv = 4.2;
     int level = 100 * (measuredvbat - minv) / (maxv - minv);
-    Log.Debug(" [VBat int: %d]" CR, level);
+    Log.Debug_(" [VBat int: %d]" CR, level);
     if (level<0) {
       level = 0;
     }
