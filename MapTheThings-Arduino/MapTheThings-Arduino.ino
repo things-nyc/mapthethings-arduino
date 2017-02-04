@@ -423,16 +423,6 @@ static void loadSettings() {
     return;
   }
 
-  if ((settings.flags & FLAG_SESSION_VARS_SET)==FLAG_SESSION_VARS_SET) {
-    debugPrint("Session vars set - initializing lora");
-    loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
-
-    reportSessionVars();
-  }
-  else if ((settings.flags & FLAG_JOIN_VARS_SET)==FLAG_JOIN_VARS_SET) {
-    debugPrint("Join keys set - initializing lora join");
-    loraJoin(settings.seq_no, settings.AppKey, settings.AppEUI, settings.DevEUI, onJoin);
-  }
   reportSessionVars();
   reportJoinVars();
 }
@@ -469,6 +459,18 @@ void setup() {
     }
 
     if (btok && loraok) {
+      if ((settings.flags & FLAG_SESSION_VARS_SET)==FLAG_SESSION_VARS_SET) {
+        Log.Info(F("Session vars set - LoRa comms ready"));
+        loraSetSessionKeys(settings.seq_no, settings.AppSKey, settings.NwkSKey, settings.DevAddr);
+      }
+      else if ((settings.flags & FLAG_JOIN_VARS_SET)==FLAG_JOIN_VARS_SET) {
+        Log.Info(F("Join keys set - Starting LoRa join"));
+        loraJoin(settings.seq_no, settings.AppKey, settings.AppEUI, settings.DevEUI, onJoin);
+      }
+      else {
+        Log.Warn(F("LoRa comms unavailable. Needs session vars or join keys." CR));
+      }
+
       Log.Info(F("Setup completed successfully" CR));
     }
 }
